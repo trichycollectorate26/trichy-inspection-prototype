@@ -312,6 +312,20 @@ footer.note{margin-top:14px;font-size:11px;color:var(--muted);text-align:center;
   border:1px solid var(--grid);border-radius:9px}
 .logingrid b{font-family:ui-monospace,Menlo,Consolas,monospace}
 
+/* ---------- dashboard tabs ---------- */
+.dashtabs{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px;border-bottom:1px solid var(--grid);padding-bottom:10px}
+.dashtab{border:1px solid var(--grid);background:var(--surface);border-radius:999px;padding:8px 15px;
+  font-size:13px;font-weight:700;cursor:pointer;color:var(--ink-2);font-family:inherit;display:flex;align-items:center;gap:7px}
+.dashtab.on{background:var(--navy);border-color:var(--navy);color:#fff}
+.dashtab i{font-style:normal;background:var(--critical);color:#fff;border-radius:999px;
+  font-size:10.5px;padding:1px 7px;font-weight:800}
+.dashtab.on i{background:#fff;color:var(--navy)}
+.kpi.on{border-color:var(--navy);background:var(--blue-soft)}
+.kpi[data-kind]{cursor:pointer}
+.badge{position:absolute;transform:translate(6px,-8px);background:var(--critical);color:#fff;
+  border-radius:999px;font-size:9.5px;padding:1px 5px;font-weight:800;font-style:normal}
+.tabbar .ic{position:relative;display:inline-block}
+
 </style>
 </head>
 <body>
@@ -361,7 +375,7 @@ footer.note{margin-top:14px;font-size:11px;color:var(--muted);text-align:center;
     All records are created by the person using this device and are stored only in this browser.
     Map panels are placeholders; the “Navigate” links open Google Maps and need no API key.<br>
     Current screen: <span id="fb-screen">login</span><br>
-    <b>Build 20260818-1221</b> — quote this if you are reporting a problem, so we know which version you were using.
+    <b>Build 20260818-1253</b> — quote this if you are reporting a problem, so we know which version you were using.
   </footer>
 </div>
 
@@ -594,6 +608,31 @@ function officerAllotment(n) {
   };
 }
 
+/* habitation name → the officer it was allotted to (1-based number) */
+let _HABOFF = null;
+function officerForHabitation(hab) {
+  if (!_HABOFF) {
+    _HABOFF = {};
+    const flat = flatHabitations();
+    ROSTER.oa.forEach(function (runs, oi) {
+      runs.forEach(function (run) {
+        for (let i = run[0]; i < run[0] + run[1]; i++) _HABOFF[flat[i].hab] = oi + 1;
+      });
+    });
+  }
+  return _HABOFF[hab] || null;
+}
+
+/* how urgent an instruction from the Collectorate is, and how long it may take */
+const PRIORITIES = [
+  { k: 'IM', en: 'Immediate', ta: 'உடனடி',   days: 2,  cls: 's-vc', icon: '⛔' },
+  { k: 'PR', en: 'Priority',  ta: 'முன்னுரிமை', days: 7,  cls: 's-ms', icon: '▲' },
+  { k: 'RO', en: 'Routine',   ta: 'வழக்கமான',  days: 15, cls: 's-ls', icon: '○' }
+];
+const PRIO = Object.fromEntries(PRIORITIES.map(p => [p.k, p]));
+
+const INSTR_STATUS = ['Open', 'Acknowledged', 'Action taken', 'Closed', 'Returned'];
+
 /* Volunteer n (1-based) → the one habitation they may report for */
 function volunteerPosting(n) { return flatHabitations()[n - 1] || null; }
 
@@ -792,7 +831,8 @@ const EMPTY = {
   allotment: { block: '', villages: [] },
   settings: { lang: 'en', fence: SETTINGS.fenceMetres },
   assets: [], inspections: [], grievances: [], nilReturns: [], feedback: [], imported: [],
-  seq: { A: 0, I: 0, G: 0, F: 0 },
+  instructions: [],
+  seq: { A: 0, I: 0, G: 0, F: 0, T: 0 },
   meta: { started: null, lastExport: null }
 };
 
@@ -880,6 +920,53 @@ const State = {
     return g.status !== 'Closed' && g.status !== 'Attended' && new Date(g.dueOn) < new Date();
   },
   ageDays(g) { return Math.max(0, Math.floor((Date.now() - new Date(g.raisedOn)) / 864e5)); },
+
+  /* ---------- instructions from the Collectorate ---------- */
+  addInstruction(t) {
+    t.id = this.id('T');
+    t.createdOn = new Date().toISOString();
+    t.by = this.data.profile.loginId || 'Collector';
+    t.status = 'Open';
+    const p = PRIO[t.priority] || PRIO.RO;
+    t.dueOn = new Date(Date.now() + p.days * 864e5).toISOString();
+    t.history = [{ at: t.createdOn, by: t.by, what: 'Issued' }];
+    this.data.instructions.push(t);
+    this.save(); return t;
+  },
+  instruction(id) { return this.data.instructions.find(x => x.id === id); },
+  updateInstruction(id, patch, note) {
+    const t = this.instruction(id); if (!t) return null;
+    Object.assign(t, patch);
+    if (note) t.history.push({ at: new Date().toISOString(),
+      by: this.data.profile.loginId || 'user', what: note });
+    this.save(); return t;
+  },
+  /* everything addressed to the officer signed in on this device */
+  myInstructions() {
+    const me = this.data.profile.loginId;
+    return this.data.instructions.filter(t => t.toOfficer === me);
+  },
+  openInstructions() { return this.data.instructions.filter(t => t.status !== 'Closed'); },
+  instrOverdue(t) {
+    return t.status !== 'Closed' && t.status !== 'Action taken' && new Date(t.dueOn) < new Date();
+  },
+  instrAge(t) { return Math.max(0, Math.floor((Date.now() - new Date(t.createdOn)) / 864e5)); },
+
+  /* ---------- what is still outstanding in the field ---------- */
+  pendingWork() {
+    const flat = flatHabitations();
+    const notEnumerated = [], notInspected = [];
+    flat.forEach(r => {
+      if (this.data.nilReturns.includes(r.hab)) return;
+      const list = this.data.assets.filter(a => a.hab === r.hab);
+      if (!list.length) notEnumerated.push({ block: r.block, vill: r.vill, hab: r.hab,
+        officer: officerForHabitation(r.hab) });
+    });
+    this.data.assets.forEach(a => {
+      if (!a.lastInspected) notInspected.push(a);
+    });
+    return { notEnumerated, notInspected };
+  },
 
   /* ---------- nil returns ---------- */
   addNilReturn(hab) {
@@ -1476,6 +1563,14 @@ const home = {
       </div>
       ${toVerify ? `<div class="alert alert-warn"><span>⚠</span><span><b>${toVerify}</b>
         ${L('waiting for your verification.', 'உங்கள் சரிபார்ப்புக்காக காத்திருக்கிறது.')}</span></div>` : ''}
+      ${(() => {
+        const mine = State.myInstructions().filter(t => t.status !== 'Closed');
+        if (!mine.length) return '';
+        const od = mine.filter(t => State.instrOverdue(t)).length;
+        return `<a class="alert ${od ? 'alert-crit' : 'alert-info'}" href="#/tasks" style="text-decoration:none">
+          <span>✎</span><span><b>${mine.length}</b> ${L('instruction', 'உத்தரவு')}${mine.length === 1 ? '' : L('s', 'கள்')}
+          ${L('from the Collectorate', 'ஆட்சியரகத்திடமிருந்து')}${od ? ` · <b>${od} ${L('overdue', 'காலம் தாண்டியது')}</b>` : ''} ›</span></a>`;
+      })()}
       <h3 class="sec">${t('villages')}
         <a class="editlink" href="#/allot">${L('view allotment', 'ஒதுக்கீட்டைப் பார்')}</a></h3>
       ${VILL().map(v => {
@@ -1488,6 +1583,124 @@ const home = {
           href: `#/village/${encodeURIComponent(v.n)}`
         }) + '';
       }).join('')}`;
+  }
+};
+
+/* ============================================================
+   OFFICER — instructions from the Collectorate
+   ============================================================ */
+const tasks = {
+  title: () => L('Instructions', 'உத்தரவுகள்'),
+  sub: () => L('From the Collectorate', 'ஆட்சியரகத்திடமிருந்து'),
+  tab: 'tasks',
+  html() {
+    const mine = State.myInstructions().slice().reverse();
+    if (!mine.length) return empty('✎', L('No instructions', 'உத்தரவு இல்லை'),
+      L('Anything the Collectorate assigns to you appears here, and has to be acted on and reported back.',
+        'ஆட்சியரகம் ஒதுக்கும் பணிகள் இங்கே தோன்றும்.'));
+    const open = mine.filter(t => t.status !== 'Closed');
+    return (open.length ? `<div class="alert alert-warn"><span>⚠</span><span><b>${open.length}</b>
+        ${L('to be attended. An instruction can be closed only by the Collectorate, after you report what was done.',
+            'கவனிக்க வேண்டியவை. ஆட்சியரகம் மட்டுமே மூட முடியும்.')}</span></div>` : '')
+      + mine.map(t => {
+        const p = PRIO[t.priority] || PRIO.RO;
+        const od = State.instrOverdue(t);
+        const a = t.assetId ? State.asset(t.assetId) : null;
+        return card({
+          title: esc(t.text.length > 70 ? t.text.slice(0, 70) + '…' : t.text),
+          sub: `${esc(t.hab)}${a ? ' · ' + esc(typeName(a.type)) : ''}`,
+          meta: `${esc(t.status)} · ${L('issued', 'பிறப்பிக்கப்பட்டது')} ${fmtDate(t.createdOn)}` +
+                (od ? ` · <span class="red">${L('overdue', 'காலம் தாண்டியது')}</span>`
+                    : ` · ${L('due', 'காலக்கெடு')} ${fmtDate(t.dueOn)}`),
+          right: `<span class="tag ${p.cls}">${p.icon} ${esc(L(p.en, p.ta))}</span>`,
+          href: `#/task/${t.id}`
+        });
+      }).join('');
+  }
+};
+
+const task = {
+  title: () => L('Instruction', 'உத்தரவு'),
+  sub() { const t = State.instruction(location.hash.split('/')[2]); return t ? t.hab : ''; },
+  tab: 'tasks',
+  html() {
+    const t = State.instruction(location.hash.split('/')[2]);
+    if (!t) return empty('?', L('Not found', 'இல்லை'));
+    const a = t.assetId ? State.asset(t.assetId) : null;
+    const p = PRIO[t.priority] || PRIO.RO;
+    const od = State.instrOverdue(t);
+    draft = { photo: null };
+    return `
+      <div class="row pad">
+        <span class="tag ${p.cls}">${p.icon} ${esc(L(p.en, p.ta))}</span>
+        <span class="tag ${od ? 's-vc' : ''}">${od ? L('Overdue', 'காலம் தாண்டியது')
+          : L('Due', 'காலக்கெடு') + ' ' + fmtDate(t.dueOn)}</span></div>
+      <div class="card">
+        <div class="t2b">${L('From the Collectorate', 'ஆட்சியரகத்திடமிருந்து')}</div>
+        <div class="t2" style="margin-top:6px">${esc(t.text)}</div>
+        ${dl(L('Habitation', 'குடியிருப்பு'), t.hab)}
+        ${a ? dl(L('Asset', 'சொத்து'), typeName(a.type) + ' · ' + a.code) : ''}
+        ${dl(L('Issued', 'பிறப்பிக்கப்பட்டது'), fmtDateTime(t.createdOn) + ' · ' + t.by)}
+        ${dl(L('Status', 'நிலை'), t.status)}
+      </div>
+      ${a ? `<a class="btn btn-ghost" target="_blank" rel="noopener" href="${mapsLink(a.loc)}">➤ ${L('Navigate to the spot', 'இடத்திற்கு வழிகாட்டு')}</a>`
+          : `<a class="btn btn-ghost" href="#/hab/${encodeURIComponent(t.hab)}">${L('Open this habitation', 'இந்த குடியிருப்பைத் திற')}</a>`}
+
+      ${t.status === 'Open' ? `<button class="btn" id="tk-ack">${L('Acknowledge', 'ஏற்றுக்கொள்')}</button>` : ''}
+
+      ${t.status === 'Closed'
+        ? `<div class="alert alert-ok"><span>✓</span><span>${L('Closed by the Collectorate.', 'ஆட்சியரகத்தால் மூடப்பட்டது.')}</span></div>`
+        : t.status === 'Action taken'
+          ? `<div class="alert alert-info"><span>ⓘ</span><span>${L('Reported. It is now with the Collectorate for verification.',
+              'தெரிவிக்கப்பட்டது; ஆட்சியரகத்தின் சரிபார்ப்பில்.')}</span></div>`
+          : `<div class="card">
+              <label class="f">${L('What you did', 'நீங்கள் செய்தது')} *</label>
+              <textarea class="f" rows="3" id="tk-text"></textarea>
+              <label class="f">${L('Photograph', 'புகைப்படம்')}</label>
+              <div class="photorow">${photoSlot('tkph', L('Take photo', 'படம் எடு'))}</div>
+              <button class="btn" id="tk-done">${L('Report action taken', 'செய்ததைத் தெரிவி')}</button>
+              <div class="tiny center">${L('The Collectorate verifies and closes it. You cannot close it yourself.',
+                'ஆட்சியரகம் சரிபார்த்து மூடும்.')}</div>
+            </div>`}
+
+      <div class="card"><div class="t2b">${L('History', 'வரலாறு')}</div>
+        <ul class="steps">${t.history.map(h => `<li><span class="dot done">•</span>
+          <div><b>${esc(h.what)}</b><br><span class="tiny">${esc(h.by)} · ${fmtDateTime(h.at)}</span></div></li>`).join('')}
+          ${t.status !== 'Closed' ? `<li><span class="dot block">✕</span><div>${L(
+            'Closure by the officer — blocked by the system', 'அலுவலரால் மூட முடியாது')}</div></li>` : ''}
+        </ul></div>`;
+  },
+  mount(root) {
+    paintPhotos(root);
+    const id = location.hash.split('/')[2];
+    const ack = root.querySelector('#tk-ack');
+    if (ack) ack.onclick = () => {
+      State.updateInstruction(id, { status: 'Acknowledged' }, 'Acknowledged by the officer');
+      toast(L('Acknowledged.', 'ஏற்கப்பட்டது.')); render();
+    };
+    const inp = root.querySelector('#tkph');
+    if (inp) inp.onchange = async e => {
+      const f = e.target.files[0]; if (!f) return;
+      const label = inp.closest('.photo');
+      label.classList.add('busy'); label.innerHTML = '<span class="ic">◌</span>';
+      draft.photo = await processPhoto(f, [L('Instruction', 'உத்தரவு') + ' ' + id, fmtDateTime(new Date().toISOString()),
+        State.data.profile.loginId || '']);
+      const url = await Photos.url(draft.photo.id);
+      label.classList.remove('busy'); label.classList.add('has-img');
+      label.style.backgroundImage = `url(${url})`; label.innerHTML = '';
+    };
+    const done = root.querySelector('#tk-done');
+    if (done) done.onclick = () => {
+      const text = root.querySelector('#tk-text').value.trim();
+      if (!text) return toast(L('Say what you did.', 'என்ன செய்தீர்கள் எனக் கூறவும்.'), 'crit');
+      State.updateInstruction(id, {
+        status: 'Action taken',
+        response: { text, photo: draft.photo, on: new Date().toISOString(),
+                    by: State.data.profile.loginId }
+      }, 'Action reported by the officer');
+      toast(L('Reported. The Collectorate will verify it.', 'தெரிவிக்கப்பட்டது.'));
+      nav('#/tasks');
+    };
   }
 };
 
@@ -2369,6 +2582,8 @@ function setRender(_) { /* no-op in the bundled build */ }
 
 const DASH = { block: null, dept: null, sev: null, status: null, source: null, type: null };
 let MAPSRC = 'TNGIS';
+let DASHTAB = 'overview';        // overview | pending | instructions
+let PENDFILTER = { block: null, officer: null, kind: 'enum' };
 
 function dashFiltered() {
   return State.data.grievances.filter(g =>
@@ -2402,6 +2617,27 @@ const dashboard = {
   sub: () => L('Live from the data recorded on this device', 'இந்த சாதனத்தில் பதிவான தரவு'),
   chrome: 'wide',
   html() {
+    const tabs = [
+      ['overview',     L('Overview', 'மேலோட்டம்'), ''],
+      ['pending',      L('Pending work', 'நிலுவைப் பணி'), String(State.pendingWork().notEnumerated.length + State.pendingWork().notInspected.length)],
+      ['instructions', L('Instructions', 'உத்தரவுகள்'), String(State.openInstructions().length)]
+    ];
+    const bar = `<div class="dashtabs">${tabs.map(([k, lab, n]) =>
+      `<button class="dashtab ${DASHTAB === k ? 'on' : ''}" data-tab="${k}">${esc(lab)}${
+        n && n !== '0' ? ` <i>${n}</i>` : ''}</button>`).join('')}</div>`;
+    if (DASHTAB === 'pending')      return `<div class="wideinner">${bar}${pendingPanel()}</div>`;
+    if (DASHTAB === 'instructions') return `<div class="wideinner">${bar}${instructionsPanel()}</div>`;
+    return overviewPanel(bar);
+  },
+  mount(root) {
+    root.querySelectorAll('[data-tab]').forEach(b => b.onclick = () => { DASHTAB = b.dataset.tab; render(); });
+    if (DASHTAB === 'pending') return mountPending(root);
+    if (DASHTAB === 'instructions') return mountInstructions(root);
+    mountOverview(root);
+  }
+};
+
+function overviewPanel(bar) {
     const g = dashFiltered();
     const all = State.data.grievances;
     const cov = State.coverage();
@@ -2411,7 +2647,7 @@ const dashboard = {
       : assetsAll;
 
     if (!assetsAll.length && !all.length) {
-      return `<div class="wideinner">${empty('◔',
+      return `<div class="wideinner">${bar}${empty('◔',
         L('Nothing recorded yet', 'இதுவரை எதுவும் பதிவாகவில்லை'),
         L('The dashboard is built from what officers actually record. Either record a few assets and inspections as the Field Officer, or load sample data from the menu to see a populated district.',
           'அலுவலர்கள் பதிவு செய்ததிலிருந்து இது உருவாகிறது. மாதிரி தரவை ஏற்றவும்.'),
@@ -2445,6 +2681,7 @@ const dashboard = {
     const stackTot = Object.values(stCnt).reduce((a, b) => a + b, 0) || 1;
 
     return `<div class="wideinner">
+      ${bar}
       <div class="chips">${chips || `<span class="tiny">${L(
         'No filter applied — single click any bar, band or tile to filter the whole page. Double click to list the records.',
         'வடிகட்டி இல்லை — கிளிக் செய்து வடிகட்டவும், இரட்டை கிளிக் செய்து பட்டியலிடவும்.')}</span>`}
@@ -2568,8 +2805,9 @@ const dashboard = {
         </tbody></table>
       </div>
     </div>`;
-  },
-  mount(root) {
+}
+
+function mountOverview(root) {
     root.querySelectorAll('[data-set]').forEach(el => {
       el.addEventListener('click', () => {
         const k = el.dataset.set, v = el.dataset.val;
@@ -2584,8 +2822,7 @@ const dashboard = {
     root.querySelectorAll('[data-map]').forEach(el => {
       el.onclick = () => { MAPSRC = el.dataset.map; render(); };
     });
-  }
-};
+}
 
 function dashOverdueOnly() {
   const rows = State.data.grievances.filter(g => State.overdue(g));
@@ -2647,6 +2884,260 @@ function mapPanel(assetsF) {
     </svg></div>`;
 }
 
+/* ============================================================
+   PENDING WORK — what has not been done, and by whom
+   ============================================================ */
+function pendingPanel() {
+  const pw = State.pendingWork();
+  const blocks = [...new Set(pw.notEnumerated.map(x => x.block))].sort();
+  const kind = PENDFILTER.kind;
+
+  const enumRows = pw.notEnumerated.filter(x => !PENDFILTER.block || x.block === PENDFILTER.block);
+  const inspRows = pw.notInspected.filter(a => !PENDFILTER.block || a.block === PENDFILTER.block);
+
+  const byBlock = {};
+  pw.notEnumerated.forEach(x => { byBlock[x.block] = (byBlock[x.block] || 0) + 1; });
+  const maxB = Math.max(1, ...Object.values(byBlock));
+
+  const byOfficer = {};
+  enumRows.forEach(x => { if (x.officer) byOfficer['Officer' + x.officer] = (byOfficer['Officer' + x.officer] || 0) + 1; });
+  const topOff = Object.keys(byOfficer).sort((a, b) => byOfficer[b] - byOfficer[a]).slice(0, 12);
+
+  return `
+    <div class="alert alert-info"><span>ⓘ</span><span>${L(
+      'What the district still owes. Enumeration comes first — an asset cannot be inspected until it has been recorded. Every row can be turned into a written instruction to the officer responsible.',
+      'இன்னும் முடிக்கப்படாத பணி. ஒவ்வொரு வரிசையிலிருந்தும் அலுவலருக்கு உத்தரவு பிறப்பிக்கலாம்.')}</span></div>
+
+    <div class="kpis">
+      <div class="kpi ${kind === 'enum' ? 'on' : ''}" data-kind="enum">
+        <div class="n">${pw.notEnumerated.length.toLocaleString('en-IN')}</div>
+        <div class="l">${L('Habitations pending enumeration', 'கணக்கெடுப்பு நிலுவை')}</div>
+        <div class="d">${L('of', 'மொத்தம்')} ${flatHabitations().length.toLocaleString('en-IN')}</div></div>
+      <div class="kpi ${kind === 'insp' ? 'on' : ''}" data-kind="insp">
+        <div class="n">${pw.notInspected.length.toLocaleString('en-IN')}</div>
+        <div class="l">${L('Assets pending inspection', 'ஆய்வு நிலுவை')}</div>
+        <div class="d">${L('recorded but never inspected', 'பதிவாகி ஆய்வு இல்லை')}</div></div>
+      <div class="kpi"><div class="n">${State.data.nilReturns.length}</div>
+        <div class="l">${L('Nil returns', 'சொத்து இல்லை எனப் பதிவு')}</div>
+        <div class="d">${L('visited, no public asset', 'பார்வையிட்டது')}</div></div>
+      <div class="kpi"><div class="n">${State.data.assets.length.toLocaleString('en-IN')}</div>
+        <div class="l">${L('Assets recorded so far', 'இதுவரை பதிவு')}</div></div>
+    </div>
+
+    <div class="chips">
+      ${PENDFILTER.block ? `<span class="chip" data-pblock="">${L('Block', 'ஒன்றியம்')}: ${esc(PENDFILTER.block)}<b>✕</b></span>`
+        : `<span class="tiny">${L('Click a block to narrow the list below.', 'ஒன்றியத்தைக் கிளிக் செய்யவும்.')}</span>`}
+    </div>
+
+    <div class="grid2">
+      <div class="chartcard">
+        <h4>${L('Habitations pending enumeration, by block', 'ஒன்றியம் வாரியாக')}</h4>
+        <div class="cap">${L('The first thing that has to finish. Click a block to filter.', 'முதலில் முடிக்க வேண்டியது.')}</div>
+        ${blocks.map(b => `<div class="barrow ${PENDFILTER.block && PENDFILTER.block !== b ? 'dim' : ''}"
+            data-pblock="${esc(b)}" title="${esc(b)}: ${byBlock[b]}">
+            <span class="blabel">${esc(b)}</span>
+            <div class="btrack"><div class="bfill" style="width:${byBlock[b] / maxB * 100}%"></div></div>
+            <span class="bval">${byBlock[b]}</span></div>`).join('') ||
+          `<div class="tiny">${L('Nothing pending — every habitation has been enumerated.', 'அனைத்தும் முடிந்தது.')}</div>`}
+      </div>
+      <div class="chartcard">
+        <h4>${L('Officers with the most pending habitations', 'அதிக நிலுவை உள்ள அலுவலர்கள்')}</h4>
+        <div class="cap">${L('Within the current block filter. This is the chasing list.', 'தற்போதைய வடிகட்டியில்.')}</div>
+        ${topOff.map(o => `<div class="barrow" data-off="${esc(o)}">
+            <span class="blabel">${esc(o)}</span>
+            <div class="btrack"><div class="bfill" style="width:${byOfficer[o] / Math.max(1, byOfficer[topOff[0]]) * 100}%"></div></div>
+            <span class="bval">${byOfficer[o]}</span></div>`).join('') ||
+          `<div class="tiny">${L('Nothing pending here.', 'நிலுவை இல்லை.')}</div>`}
+      </div>
+    </div>
+
+    <div class="chartcard">
+      <h4>${kind === 'enum'
+            ? L('Habitations pending enumeration', 'கணக்கெடுப்பு நிலுவையில் உள்ள குடியிருப்புகள்')
+            : L('Assets pending inspection', 'ஆய்வு நிலுவையில் உள்ள சொத்துகள்')}
+        <span class="srcbtns">
+          <button class="mini-btn ${kind === 'enum' ? 'on' : ''}" data-kind="enum">${L('Enumeration', 'கணக்கெடுப்பு')}</button>
+          <button class="mini-btn ${kind === 'insp' ? 'on' : ''}" data-kind="insp">${L('Inspection', 'ஆய்வு')}</button>
+        </span></h4>
+      <div class="cap">${L('Use “Instruct” to send a written task to the officer responsible.', '“உத்தரவு” மூலம் அலுவலருக்கு பணி அனுப்பவும்.')}</div>
+      <table class="dt"><thead><tr>
+        ${kind === 'enum'
+          ? `<th>${L('Block', 'ஒன்றியம்')}</th><th>${L('Village panchayat', 'ஊராட்சி')}</th><th>${L('Habitation', 'குடியிருப்பு')}</th><th>${L('Officer', 'அலுவலர்')}</th><th></th>`
+          : `<th>${L('Asset', 'சொத்து')}</th><th>${L('Habitation', 'குடியிருப்பு')}</th><th>${L('Recorded', 'பதிவு')}</th><th>${L('Officer', 'அலுவலர்')}</th><th></th>`}
+      </tr></thead><tbody>
+      ${(kind === 'enum'
+        ? enumRows.slice(0, 120).map(x => `<tr>
+            <td>${esc(x.block)}</td><td>${esc(x.vill)}</td><td><b>${esc(x.hab)}</b></td>
+            <td>${x.officer ? 'Officer' + x.officer : '—'}</td>
+            <td class="num"><button class="mini-btn" data-instr-hab="${esc(x.hab)}">✎ ${L('Instruct', 'உத்தரவு')}</button></td></tr>`)
+        : inspRows.slice(0, 120).map(a => `<tr>
+            <td><b>${esc(typeName(a.type))}</b><div class="tiny mono">${esc(a.code)}</div></td>
+            <td>${esc(a.hab)}</td><td>${fmtDate(a.createdOn)}</td>
+            <td>${officerForHabitation(a.hab) ? 'Officer' + officerForHabitation(a.hab) : '—'}</td>
+            <td class="num"><button class="mini-btn" data-instr-asset="${esc(a.id)}">✎ ${L('Instruct', 'உத்தரவு')}</button></td></tr>`)
+      ).join('') || `<tr><td colspan="5" class="tiny">${L('Nothing pending.', 'நிலுவை இல்லை.')}</td></tr>`}
+      </tbody></table>
+      ${(kind === 'enum' ? enumRows.length : inspRows.length) > 120
+        ? `<div class="tiny" style="margin-top:8px">${L(
+            `Showing 120 of ${(kind === 'enum' ? enumRows.length : inspRows.length).toLocaleString('en-IN')}. Narrow by block, or export the list.`,
+            '120 மட்டும் காட்டப்படுகிறது.')}</div>` : ''}
+    </div>`;
+}
+
+function mountPending(root) {
+  root.querySelectorAll('[data-kind]').forEach(el => el.onclick = () => { PENDFILTER.kind = el.dataset.kind; render(); });
+  root.querySelectorAll('[data-pblock]').forEach(el => el.onclick = () => {
+    const v = el.dataset.pblock;
+    PENDFILTER.block = (!v || PENDFILTER.block === v) ? null : v; render();
+  });
+  root.querySelectorAll('[data-instr-hab]').forEach(el => el.onclick = () => instructForm({ hab: el.dataset.instrHab }));
+  root.querySelectorAll('[data-instr-asset]').forEach(el => el.onclick = () => instructForm({ assetId: el.dataset.instrAsset }));
+}
+
+/* ============================================================
+   INSTRUCTIONS — issue one, and watch what happens to it
+   ============================================================ */
+function instructForm(target) {
+  const a = target.assetId ? State.asset(target.assetId) : null;
+  const hab = a ? a.hab : target.hab;
+  const offN = officerForHabitation(hab);
+  if (!offN) { toast(L('No officer is allotted to that habitation.', 'அந்த குடியிருப்புக்கு அலுவலர் இல்லை.'), 'crit'); return; }
+  const officer = 'Officer' + offN;
+  const rec = flatHabitations().find(x => x.hab === hab) || {};
+
+  const body = sheet(L('Instruct the officer', 'அலுவலருக்கு உத்தரவு'), `
+    <div class="card slim">
+      ${a ? `<div class="dl"><b>${L('Asset', 'சொத்து')}</b><span>${esc(typeName(a.type))} · ${esc(a.code)}</span></div>` : ''}
+      <div class="dl"><b>${L('Habitation', 'குடியிருப்பு')}</b><span>${esc(hab)}</span></div>
+      <div class="dl"><b>${L('Village panchayat', 'ஊராட்சி')}</b><span>${esc(rec.vill || (a ? a.vill : ''))}</span></div>
+      <div class="dl"><b>${L('To', 'யாருக்கு')}</b><span><b>${officer}</b></span></div>
+    </div>
+    <label class="f">${L('Priority', 'முன்னுரிமை')}</label>
+    <select class="f" id="ins-pri">${PRIORITIES.map(p =>
+      `<option value="${p.k}">${esc(L(p.en, p.ta))} — ${L('attend within', 'காலக்கெடு')} ${p.days} ${L('days', 'நாட்கள்')}</option>`).join('')}</select>
+    <label class="f">${L('Instruction', 'உத்தரவு')} *</label>
+    <textarea class="f" rows="4" id="ins-text" placeholder="${L(
+      'For example: enumerate this habitation before the next field day and report the anganwadi condition.',
+      'உதாரணம்: அடுத்த கள நாளுக்குள் இந்த குடியிருப்பைக் கணக்கெடுக்கவும்.')}"></textarea>
+    <button class="btn" id="ins-go">➤ ${L('Issue instruction', 'உத்தரவு பிறப்பி')}</button>
+    <div class="tiny" style="margin-top:8px">${L(
+      'It appears on that officer’s home screen, has to be acknowledged and acted on, and can be closed only by the Collectorate — not by the officer.',
+      'அலுவலரின் திரையில் தோன்றும்; ஆட்சியரகம் மட்டுமே மூட முடியும்.')}</div>`);
+
+  body.querySelector('#ins-go').onclick = () => {
+    const text = body.querySelector('#ins-text').value.trim();
+    if (!text) return toast(L('Write the instruction first.', 'உத்தரவை எழுதவும்.'), 'crit');
+    State.addInstruction({
+      assetId: a ? a.id : null, hab: hab, vill: rec.vill || (a ? a.vill : ''),
+      block: rec.block || (a ? a.block : ''), toOfficer: officer,
+      priority: body.querySelector('#ins-pri').value, text: text
+    });
+    closeSheet();
+    toast(L(`Issued to ${officer}.`, `${officer} க்கு அனுப்பப்பட்டது.`));
+    DASHTAB = 'instructions'; render();
+  };
+}
+
+function instructionsPanel() {
+  const all = State.data.instructions.slice().reverse();
+  const open = all.filter(t => t.status !== 'Closed');
+  const overdue = all.filter(t => State.instrOverdue(t));
+  const toVerify = all.filter(t => t.status === 'Action taken');
+  const byOff = {};
+  open.forEach(t => { byOff[t.toOfficer] = (byOff[t.toOfficer] || 0) + 1; });
+  const offs = Object.keys(byOff).sort((a, b) => byOff[b] - byOff[a]);
+
+  if (!all.length) return empty('✎',
+    L('No instructions issued yet', 'இதுவரை உத்தரவு இல்லை'),
+    L('Open Pending work, find a habitation or an asset, and press Instruct. What you issue appears here and on the officer\'s home screen.',
+      'நிலுவைப் பணியில் சென்று “உத்தரவு” அழுத்தவும்.'),
+    `<button class="btn" data-tab="pending">${L('Go to pending work', 'நிலுவைப் பணிக்கு')}</button>`);
+
+  return `
+    <div class="kpis">
+      <div class="kpi"><div class="n">${all.length}</div><div class="l">${L('Issued', 'பிறப்பிக்கப்பட்டது')}</div></div>
+      <div class="kpi"><div class="n">${open.length}</div><div class="l">${L('Still open', 'நிலுவை')}</div></div>
+      <div class="kpi alert"><div class="n">${overdue.length}</div><div class="l">${L('Overdue', 'காலம் தாண்டியது')}</div>
+        <div class="d">${L('past the date set', 'குறித்த தேதி தாண்டியது')}</div></div>
+      <div class="kpi"><div class="n">${toVerify.length}</div><div class="l">${L('Awaiting my verification', 'சரிபார்ப்பில்')}</div>
+        <div class="d">${L('officer says it is done', 'அலுவலர் முடித்ததாக')}</div></div>
+      <div class="kpi"><div class="n">${all.filter(t => t.status === 'Closed').length}</div>
+        <div class="l">${L('Closed', 'மூடப்பட்டது')}</div></div>
+    </div>
+
+    ${offs.length ? `<div class="chartcard">
+      <h4>${L('Officers with instructions outstanding', 'நிலுவை உத்தரவுகள் உள்ள அலுவலர்கள்')}</h4>
+      <div class="cap">${L('Who is holding up the district.', 'யாரிடம் நிலுவை உள்ளது.')}</div>
+      ${offs.slice(0, 12).map(o => `<div class="barrow">
+        <span class="blabel">${esc(o)}</span>
+        <div class="btrack"><div class="bfill" style="width:${byOff[o] / byOff[offs[0]] * 100}%"></div></div>
+        <span class="bval">${byOff[o]}</span></div>`).join('')}
+    </div>` : ''}
+
+    <div class="chartcard">
+      <h4>${L('Every instruction', 'அனைத்து உத்தரவுகளும்')}</h4>
+      <div class="cap">${L('Newest first. An instruction can be closed only here, never by the officer.',
+        'அலுவலரால் மூட முடியாது; ஆட்சியரகம் மட்டுமே.')}</div>
+      <table class="dt"><thead><tr>
+        <th>${L('Issued', 'தேதி')}</th><th>${L('To', 'யாருக்கு')}</th><th>${L('Where', 'எங்கே')}</th>
+        <th>${L('Instruction', 'உத்தரவு')}</th><th>${L('Priority', 'முன்னுரிமை')}</th>
+        <th>${L('Status', 'நிலை')}</th><th>${L('Days', 'நாட்கள்')}</th><th></th></tr></thead><tbody>
+      ${all.map(t => {
+        const a = t.assetId ? State.asset(t.assetId) : null;
+        const p = PRIO[t.priority] || PRIO.RO;
+        const od = State.instrOverdue(t);
+        return `<tr>
+          <td style="white-space:nowrap">${fmtDate(t.createdOn)}</td>
+          <td><b>${esc(t.toOfficer)}</b></td>
+          <td>${esc(t.hab)}${a ? `<div class="tiny">${esc(typeName(a.type))}</div>` : ''}</td>
+          <td>${esc(t.text)}${t.response ? `<div class="tiny">↳ ${esc(t.response.text || '')}</div>` : ''}</td>
+          <td><span class="tag ${p.cls}">${p.icon} ${esc(L(p.en, p.ta))}</span></td>
+          <td>${esc(t.status)}${od ? `<div class="tiny red">${L('overdue', 'தாண்டியது')}</div>` : ''}</td>
+          <td class="num">${State.instrAge(t)}</td>
+          <td class="num">${t.status === 'Action taken'
+            ? `<button class="mini-btn on" data-verify="${t.id}">${L('Verify', 'சரிபார்')}</button>`
+            : t.status === 'Closed' ? '✓' : ''}</td></tr>`;
+      }).join('')}
+      </tbody></table>
+    </div>`;
+}
+
+function mountInstructions(root) {
+  root.querySelectorAll('[data-tab]').forEach(b => b.onclick = () => { DASHTAB = b.dataset.tab; render(); });
+  root.querySelectorAll('[data-verify]').forEach(b => b.onclick = () => verifyInstruction(b.dataset.verify));
+}
+
+function verifyInstruction(id) {
+  const t = State.instruction(id); if (!t) return;
+  const body = sheet(L('Verify and close', 'சரிபார்த்து மூடு'), `
+    <div class="card slim">
+      <div class="dl"><b>${L('To', 'யாருக்கு')}</b><span>${esc(t.toOfficer)}</span></div>
+      <div class="dl"><b>${L('Where', 'எங்கே')}</b><span>${esc(t.hab)}</span></div>
+      <div class="dl"><b>${L('Issued', 'பிறப்பிக்கப்பட்டது')}</b><span>${fmtDateTime(t.createdOn)}</span></div>
+    </div>
+    <div class="card slim"><div class="t2b">${L('The instruction', 'உத்தரவு')}</div>
+      <div class="tiny">${esc(t.text)}</div></div>
+    <div class="card slim"><div class="t2b">${L('What the officer reported', 'அலுவலர் தெரிவித்தது')}</div>
+      <div class="tiny">${esc((t.response || {}).text || '—')}</div>
+      ${(t.response || {}).photo ? `<div class="photorow"><div class="photo" data-photo="${esc(t.response.photo.id)}"></div></div>` : ''}
+      <div class="tiny">${(t.response || {}).on ? fmtDateTime(t.response.on) : ''}</div></div>
+    <button class="btn btn-green" id="iv-close">✓ ${L('Satisfied — close', 'திருப்தி — மூடு')}</button>
+    <label class="f">${L('Or return it, with a reason', 'அல்லது காரணத்துடன் திருப்பு')}</label>
+    <textarea class="f" rows="2" id="iv-why"></textarea>
+    <button class="btn btn-grey" id="iv-return">${L('Return to the officer', 'அலுவலருக்கு திருப்பு')}</button>`);
+  paintPhotos(body);
+  body.querySelector('#iv-close').onclick = () => {
+    State.updateInstruction(id, { status: 'Closed', closedOn: new Date().toISOString() }, 'Verified and closed');
+    closeSheet(); toast(L('Closed.', 'மூடப்பட்டது.')); render();
+  };
+  body.querySelector('#iv-return').onclick = () => {
+    const why = body.querySelector('#iv-why').value.trim();
+    if (!why) return toast(L('A reason is required.', 'காரணம் தேவை.'), 'crit');
+    State.updateInstruction(id, { status: 'Returned' }, 'Returned: ' + why);
+    closeSheet(); toast(L('Returned to the officer.', 'திருப்பப்பட்டது.')); render();
+  };
+}
+
 
 /* ===== app.js ===== */
 /* ============================================================
@@ -2658,6 +3149,8 @@ const ROUTES = [
   [/^#\/login/,                  () => login],
   [/^#\/home/,                   () => home],
   [/^#\/allot/,                  () => allot],
+  [/^#\/tasks/,                  () => tasks],
+  [/^#\/task\//,                 () => task],
   [/^#\/village\//,              () => village],
   [/^#\/hab\//,                  () => hab],
   [/^#\/new\//,                  () => newAsset],
@@ -2679,6 +3172,7 @@ const ROUTES = [
 
 const TABS = {
   officer: [['home', '◫', () => L('Home', 'முகப்பு'), '#/home'],
+            ['tasks', '✎', () => L('Tasks', 'பணிகள்'), '#/tasks'],
             ['insp', '◷', () => L('Inspections', 'ஆய்வுகள்'), '#/inspections'],
             ['grv', '!', () => L('Grievances', 'குறைகள்'), '#/grievances'],
             ['data', '⇅', () => L('Data', 'தரவு'), '#/home']],
@@ -2690,7 +3184,7 @@ function currentRole() { return myRole() || 'officer'; }
 
 /* which screens each role may reach */
 const ALLOWED = {
-  officer:   [/^#\/(home|allot|village|hab|new|asset|assets|inspect|inspection|inspections|grievances|grievance)/],
+  officer:   [/^#\/(home|allot|village|hab|new|asset|assets|inspect|inspection|inspections|grievances|grievance|tasks|task)/],
   volunteer: [/^#\/v\//, /^#\/grievance\//],
   dept:      [/^#\/d\//],
   collector: [/^#\/dashboard/],
@@ -2744,9 +3238,11 @@ function render() {
     document.getElementById('backbtn').style.visibility = history.length > 1 ? 'visible' : 'hidden';
     const tabs = TABS[role] || [];
     const tb = document.getElementById('tabs');
+    const nTasks = myRole() === 'officer'
+      ? State.myInstructions().filter(t => t.status !== 'Closed' && t.status !== 'Action taken').length : 0;
     tb.innerHTML = tabs.map(([k, ic, lab, href]) =>
       `<a class="${S.tab === k ? 'on' : ''}" href="${href}"${k === 'data' ? ' data-datamenu="1"' : ''}>
-        <span class="ic">${ic}</span>${lab()}</a>`).join('');
+        <span class="ic">${ic}${k === 'tasks' && nTasks ? `<b class="badge">${nTasks}</b>` : ''}</span>${lab()}</a>`).join('');
     tb.style.display = (tabs.length && location.hash !== '#/login' && location.hash !== '#/') ? 'flex' : 'none';
     const dm = tb.querySelector('[data-datamenu]');
     if (dm) dm.onclick = e => { e.preventDefault(); dataMenu(); };
@@ -2929,6 +3425,30 @@ function loadDemo() {
               rec.grievanceIds.push(g.id);
             });
           }
+        }
+      });
+      /* a few instructions from the Collectorate, so the new tabs show something */
+      const pend = State.pendingWork().notEnumerated.slice(0, 40);
+      const picks = [];
+      for (let i = 0; i < pend.length && picks.length < 9; i += Math.max(1, Math.floor(pend.length / 9))) picks.push(pend[i]);
+      picks.forEach((x, i) => {
+        if (!x.officer) return;
+        const t = State.addInstruction({
+          assetId: null, hab: x.hab, vill: x.vill, block: x.block,
+          toOfficer: 'Officer' + x.officer,
+          priority: ['IM', 'PR', 'RO'][i % 3],
+          text: ['Enumerate this habitation before the next field day.',
+                 'The anganwadi here has been reported unsafe — inspect and report within the week.',
+                 'Confirm whether the overhead tank in this habitation is in the register.'][i % 3]
+        });
+        t.createdOn = new Date(Date.now() - ri(1, 20) * 864e5).toISOString();
+        t.dueOn = new Date(new Date(t.createdOn).getTime() + PRIO[t.priority].days * 864e5).toISOString();
+        if (t.history && t.history[0]) t.history[0].at = t.createdOn;   // keep the trail consistent
+        const roll = rnd();
+        t.status = roll < 0.3 ? 'Open' : roll < 0.55 ? 'Acknowledged' : roll < 0.8 ? 'Action taken' : 'Closed';
+        if (t.status === 'Action taken' || t.status === 'Closed') {
+          t.response = { text: 'Visited and completed as instructed.', photo: null,
+                         on: new Date().toISOString(), by: t.toOfficer };
         }
       });
       State.quiet = false;

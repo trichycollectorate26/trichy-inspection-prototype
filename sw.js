@@ -6,7 +6,7 @@
    fetched whenever there is a connection, and the cached copy is used only
    when there is not. */
 
-const BUILD = '20260818-1221';                 // replaced at build time
+const BUILD = '20260818-1253';                 // replaced at build time
 const CACHE = 'trichy-asset-trial-' + BUILD;
 const SHELL = ['./', './index.html', './manifest.webmanifest',
                './assets/icons/icon-192.png', './assets/icons/icon-512.png'];
