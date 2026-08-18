@@ -1,0 +1,22 @@
+{
+  "_readme": "Settings for the trial. Edit this file on GitHub and press Commit changes — nothing needs rebuilding, and testers pick it up the next time they open the app. Leave a value as \"\" to switch that feature off.",
+
+  "sheetEndpoint": "",
+  "_sheetEndpoint": "Paste the Apps Script web-app URL here, the one ending in /exec. Feedback then goes into your Google Sheet as it is written. See docs/GOOGLE-SHEET-SETUP.md.",
+
+  "sheetToken": "trichy-trial-2026",
+  "_sheetToken": "Must match the TOKEN line in the Apps Script. Change both together.",
+
+  "nodalName": "the nodal officer",
+  "nodalWhatsApp": "",
+  "_nodalWhatsApp": "Country code, no + and no spaces, e.g. 919876543210. Used by the Send now button.",
+
+  "formUrl": "",
+  "_formUrl": "Optional Google Form, offered as a second way to send feedback.",
+
+  "appPasscode": "",
+  "_appPasscode": "Asked for before the app opens. A latch, not a lock — see docs/ACCESS-CONTROL.md.",
+
+  "reviewPasscode": "",
+  "_reviewPasscode": "Asked for before the See all feedback received screen opens."
+}

@@ -6,9 +6,9 @@
    fetched whenever there is a connection, and the cached copy is used only
    when there is not. */
 
-const BUILD = '20260818-1253';                 // replaced at build time
+const BUILD = '20260818-1332';                 // replaced at build time
 const CACHE = 'trichy-asset-trial-' + BUILD;
-const SHELL = ['./', './index.html', './manifest.webmanifest',
+const SHELL = ['./', './index.html', './manifest.webmanifest', './config.json',
                './assets/icons/icon-192.png', './assets/icons/icon-512.png'];
 
 self.addEventListener('install', e => {
@@ -30,6 +30,13 @@ self.addEventListener('message', e => { if (e.data === 'skipWaiting') self.skipW
 
 self.addEventListener('fetch', e => {
   if (e.request.method !== 'GET') return;
+
+  // settings must always be the newest, never the cached copy
+  if (/config\.json/.test(e.request.url)) {
+    e.respondWith(fetch(e.request, { cache: 'no-store' }).catch(() => caches.match(e.request)));
+    return;
+  }
+
   const isPage = e.request.mode === 'navigate' ||
                  (e.request.destination === 'document') ||
                  /index\.html($|\?)/.test(e.request.url);

@@ -383,7 +383,7 @@ footer.note{margin-top:14px;font-size:11px;color:var(--muted);text-align:center;
     All records are created by the person using this device and are stored only in this browser.
     Map panels are placeholders; the “Navigate” links open Google Maps and need no API key.<br>
     Current screen: <span id="fb-screen">login</span><br>
-    <b>Build 20260818-1313</b> — quote this if you are reporting a problem, so we know which version you were using.
+    <b>Build 20260818-1332</b> — quote this if you are reporting a problem, so we know which version you were using.
   </footer>
 </div>
 
@@ -715,7 +715,7 @@ const TRIAL = {
      tester's feedback lands in one private sheet automatically, in a single
      submission at the end. See docs/GOOGLE-SHEET-SETUP.md. Leave blank and the
      app falls back to WhatsApp / copy / file. */
-  sheetEndpoint: 'https://script.google.com/macros/s/AKfycbwOsy-uMJGcj_vpsDR1KIikanuQau2llBR6zqECd0dEEcKS71HQLCXKfPD5AhlPvdZc/exec',                 // e.g. 'https://script.google.com/macros/s/AKfy.../exec'
+  sheetEndpoint: '',                 // e.g. 'https://script.google.com/macros/s/AKfy.../exec'
   sheetToken: 'trichy-trial-2026',   // must match the TOKEN in the Apps Script
 
   /* Optional Google Form, shown as an extra option. */
@@ -3913,8 +3913,31 @@ function showGate() {
   document.getElementById('gate-pass').focus();
 }
 
+/* ---------------- settings, from config.json ----------------
+   Kept in a separate file so that the WhatsApp number, the Google Sheet
+   endpoint and the passcodes can be changed by editing a five-line file on
+   GitHub, with no rebuilding and no touching the application itself. */
+const CONFIG_KEYS = ['sheetEndpoint', 'sheetToken', 'nodalName', 'nodalWhatsApp',
+                     'formUrl', 'appPasscode', 'reviewPasscode'];
+
+async function loadConfig() {
+  try {
+    const r = await fetch('config.json?v=' + Date.now(), { cache: 'no-store' });
+    if (!r.ok) return;
+    const cfg = await r.json();
+    CONFIG_KEYS.forEach(k => {
+      if (typeof cfg[k] === 'string' && cfg[k] !== '') TRIAL[k] = cfg[k].trim();
+    });
+    console.info('config.json loaded', TRIAL.sheetEndpoint ? '(sheet endpoint set)' : '(no sheet endpoint)');
+  } catch (e) {
+    /* opened from a file rather than a web address, or the file is absent —
+       the values compiled into the app are used instead */
+  }
+}
+
 /* ---------------- boot ---------------- */
-function boot() {
+async function boot() {
+  await loadConfig();
   if (!gatePassed()) { showGate(); return; }
   startApp();
 }
