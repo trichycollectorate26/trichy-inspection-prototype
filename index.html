@@ -326,6 +326,13 @@ footer.note{margin-top:14px;font-size:11px;color:var(--muted);text-align:center;
   border-radius:999px;font-size:9.5px;padding:1px 5px;font-weight:800;font-style:normal}
 .tabbar .ic{position:relative;display:inline-block}
 
+.syncbadge{font-size:10.5px;font-weight:700;padding:3px 9px;border-radius:999px;white-space:nowrap}
+.syncbadge.wait{background:#fdf6e6;border:1px solid #f2dfae;color:#8a5c00}
+.syncbadge.done{background:#effaef;border:1px solid #bfe6bf;color:#0a7d0a}
+@media (prefers-color-scheme:dark){
+ .syncbadge.wait{background:#2e2408;border-color:#5a4713;color:#fac95e}
+ .syncbadge.done{background:#0e2a0e;border-color:#1d4a1d;color:#7fd97f}}
+
 </style>
 </head>
 <body>
@@ -344,6 +351,7 @@ footer.note{margin-top:14px;font-size:11px;color:var(--muted);text-align:center;
     </div>
     <div style="display:flex;flex-direction:column;gap:7px;align-items:flex-end">
       <div class="pill-row" id="roles"></div>
+      <span id="syncbadge"></span>
       <div class="pill-row">
         <button class="pill" id="langbtn">தமிழ்</button>
         <button class="icon-btn" id="menu-btn" title="Trial data">⇅</button>
@@ -375,7 +383,7 @@ footer.note{margin-top:14px;font-size:11px;color:var(--muted);text-align:center;
     All records are created by the person using this device and are stored only in this browser.
     Map panels are placeholders; the “Navigate” links open Google Maps and need no API key.<br>
     Current screen: <span id="fb-screen">login</span><br>
-    <b>Build 20260818-1253</b> — quote this if you are reporting a problem, so we know which version you were using.
+    <b>Build 20260818-1313</b> — quote this if you are reporting a problem, so we know which version you were using.
   </footer>
 </div>
 
@@ -3253,6 +3261,7 @@ function render() {
 
   if (S.mount) { try { S.mount(host); } catch (e) { console.error(e); } }
   document.getElementById('fb-screen').textContent = (location.hash || '#/').replace('#/', '') || 'login';
+  setSyncBadge();
 }
 setRender(render);
 
@@ -3340,7 +3349,9 @@ function feedbackSheet() {
       'Comments are collected on this phone as you go. When you have finished, send them all in one go from the ⇅ menu — you do not send them one at a time.',
       'கருத்துகள் இங்கே சேகரிக்கப்படும். முடிந்ததும் ⇅ மெனுவிலிருந்து அனைத்தையும் ஒரே சேர அனுப்பவும்.')}</div>
     ${State.data.feedback.length ? `<div class="tiny" style="margin-top:4px"><b>${
-      State.data.feedback.length}</b> ${L('already saved on this phone.', 'ஏற்கனவே சேமிக்கப்பட்டுள்ளது.')}</div>` : ''}`);
+      State.data.feedback.length}</b> ${L('saved on this phone', 'சேமிக்கப்பட்டது')}${
+      TRIAL.sheetEndpoint ? ` · <b>${State.data.feedback.length - pendingFeedback().length}</b> ${
+        L('already in the district sheet', 'மாவட்ட தாளில்')}` : ''}.</div>` : ''}`);
   let verdict = 'change';
   body.querySelectorAll('[data-v]').forEach(b => b.onclick = () => {
     verdict = b.dataset.v;
@@ -3353,8 +3364,15 @@ function feedbackSheet() {
     State.addFeedback({ screen: screenKey, verdict, comment });
     closeSheet();
     const n = State.data.feedback.length;
-    toast(L(`Saved. ${n} comment${n === 1 ? '' : 's'} so far — send them all together at the end.`,
-            `சேமிக்கப்பட்டது. இதுவரை ${n} கருத்து — இறுதியில் ஒரே சேர அனுப்பவும்.`));
+    if (TRIAL.sheetEndpoint) {
+      toast(navigator.onLine
+        ? L('Saved and sent to the district sheet.', 'சேமித்து மாவட்ட தாளுக்கு அனுப்பப்பட்டது.')
+        : L('Saved. It will send on its own when there is signal.', 'சேமிக்கப்பட்டது; சிக்னல் வந்ததும் அனுப்பப்படும்.'));
+      syncFeedback({ silent: true });
+    } else {
+      toast(L(`Saved. ${n} comment${n === 1 ? '' : 's'} so far — send them all together at the end.`,
+              `சேமிக்கப்பட்டது. இதுவரை ${n} கருத்து — இறுதியில் ஒரே சேர அனுப்பவும்.`));
+    }
   };
 }
 
@@ -3459,17 +3477,37 @@ function loadDemo() {
     L('Add sample data', 'சேர்'));
 }
 
-/* ---------------- sending everything to the district sheet ---------------- */
-async function submitToSheet() {
-  const pending = State.data.feedback.filter(f => !f.sent);
-  if (!pending.length) { toast(L('Everything on this phone has already been submitted.', 'அனைத்தும் ஏற்கனவே அனுப்பப்பட்டுவிட்டன.')); return; }
-  if (!navigator.onLine) { toast(L('No connection. Try again when you have signal — nothing is lost.', 'இணைப்பு இல்லை. சிக்னல் வந்ததும் முயற்சிக்கவும்.'), 'crit'); return; }
+/* ---------------- feedback → the district sheet, as it happens ----------------
+   Each comment is sent the moment it is saved. If there is no signal it waits on
+   the phone and goes as soon as there is. The tester does nothing; the manual
+   button below is only a catch-up.
+   Only feedback is ever sent. Assets, inspections, grievances and photographs
+   never leave the device. */
 
+let _syncing = false;
+
+function pendingFeedback() { return State.data.feedback.filter(f => !f.sent); }
+
+async function syncFeedback(opts) {
+  opts = opts || {};
+  if (!TRIAL.sheetEndpoint) return { ok: false, why: 'no-endpoint' };
+  if (_syncing) return { ok: false, why: 'busy' };
+  const pending = pendingFeedback();
+  if (!pending.length) return { ok: true, sent: 0 };
+  if (!navigator.onLine) {
+    setSyncBadge();
+    return { ok: false, why: 'offline' };
+  }
+
+  _syncing = true;
   const payload = {
     token: TRIAL.sheetToken,
-    tester: State.data.profile.name || 'Trial user',
+    kind: 'feedback',
+    tester: State.data.profile.loginId || State.data.profile.name || 'Trial user',
     mobile: State.data.profile.mobile || '',
+    role: myRole() || '',
     block: BLK(),
+    build: (document.querySelector('footer.note b') || {}).textContent || '',
     device: navigator.userAgent,
     counts: {
       assets: State.data.assets.length,
@@ -3479,11 +3517,8 @@ async function submitToSheet() {
     items: pending.map(f => ({ id: f.id, on: f.on, screen: f.screen, verdict: f.verdict, comment: f.comment }))
   };
 
-  const btn = document.getElementById('s-sheet');
-  if (btn) { btn.disabled = true; btn.textContent = L('Sending…', 'அனுப்புகிறது…'); }
   let ok = false, confirmed = false;
   try {
-    // text/plain avoids a CORS preflight, which Apps Script does not answer
     const r = await fetch(TRIAL.sheetEndpoint, {
       method: 'POST',
       headers: { 'Content-Type': 'text/plain;charset=utf-8' },
@@ -3491,7 +3526,6 @@ async function submitToSheet() {
     });
     const j = await r.json();
     ok = confirmed = !!j.ok;
-    if (!j.ok) console.warn('sheet said', j);
   } catch (e) {
     try {
       await fetch(TRIAL.sheetEndpoint, { method: 'POST', mode: 'no-cors',
@@ -3499,24 +3533,44 @@ async function submitToSheet() {
       ok = true; confirmed = false;
     } catch (e2) { ok = false; }
   }
+  _syncing = false;
 
   if (ok) {
-    pending.forEach(f => { f.sent = true; f.sentOn = new Date().toISOString(); });
+    const now = new Date().toISOString();
+    pending.forEach(f => { f.sent = true; f.sentOn = now; });
     State.save();
-    closeSheet();
-    toast(confirmed
-      ? L(`Sent. ${pending.length} comment${pending.length === 1 ? '' : 's'} are now in the district sheet.`,
-          `அனுப்பப்பட்டது. ${pending.length} கருத்துகள் மாவட்ட தாளில்.`)
-      : L('Sent. Delivery could not be confirmed from here, so keep the exported file as a backup.',
-          'அனுப்பப்பட்டது. உறுதி செய்ய இயலவில்லை; கோப்பை வைத்திருக்கவும்.'));
-  } else {
-    if (btn) { btn.disabled = false; btn.textContent = '☁ ' + L('Submit to the district sheet', 'மாவட்ட தாளுக்கு அனுப்பு'); }
-    toast(L('Could not reach the sheet. Use Copy all or Save as file instead — nothing is lost.',
-            'தாளை அணுக இயலவில்லை. நகலெடு அல்லது கோப்பாக சேமிக்கவும்.'), 'crit');
+    setSyncBadge();
+    if (!opts.silent) {
+      toast(confirmed
+        ? L(`${pending.length} comment${pending.length === 1 ? '' : 's'} sent to the district sheet.`,
+            `${pending.length} கருத்து அனுப்பப்பட்டது.`)
+        : L('Sent. Delivery could not be confirmed from here.', 'அனுப்பப்பட்டது.'));
+    }
+    return { ok: true, sent: pending.length, confirmed: confirmed };
   }
+  setSyncBadge();
+  if (!opts.silent) toast(L('Could not reach the sheet. It will go automatically when there is signal.',
+                            'தாளை அணுக இயலவில்லை; சிக்னல் வந்ததும் தானாக செல்லும்.'), 'crit');
+  return { ok: false, why: 'failed' };
 }
 
-/* ---------------- sending feedback onward ---------------- */
+/* a quiet marker in the header so the tester can see nothing is stuck */
+function setSyncBadge() {
+  const el = document.getElementById('syncbadge');
+  if (!el) return;
+  if (!TRIAL.sheetEndpoint || !State.data.feedback.length) { el.textContent = ''; el.className = ''; return; }
+  const n = pendingFeedback().length;
+  el.className = 'syncbadge ' + (n ? 'wait' : 'done');
+  el.textContent = n
+    ? L(`${n} comment${n === 1 ? '' : 's'} waiting to send`, `${n} கருத்து அனுப்பக் காத்திருக்கிறது`)
+    : L('feedback sent', 'கருத்துகள் அனுப்பப்பட்டன');
+  el.title = n ? L('They will go on their own once there is a connection.', 'இணைப்பு வந்ததும் தானாக செல்லும்.') : '';
+}
+
+/* catch-up, kept for the end of the trial and for anyone offline all day */
+function submitToSheet() { syncFeedback({ silent: false }).then(() => { closeSheet(); render(); }); }
+
+/* ---------------- sending feedback onward ---------------- *//* ---------------- sending feedback onward ---------------- */
 function shareText(text) {
   if (TRIAL.nodalWhatsApp) {
     window.open('https://wa.me/' + TRIAL.nodalWhatsApp + '?text=' + encodeURIComponent(text), '_blank');
@@ -3626,16 +3680,23 @@ function sendAllFeedback() {
   if (!fb.length) { toast(L('No feedback recorded on this phone yet.', 'இதுவரை கருத்து இல்லை.'), 'crit'); return; }
   const text = compileMyFeedback();
   const body = sheet(L('Send all my feedback', 'என் கருத்துகள் அனைத்தையும் அனுப்பு'), `
-    <div class="alert alert-info"><span>ⓘ</span><span>${L(
-      `All ${fb.length} comments are compiled into one message. Send it once, at the end — there is no need to send them one at a time.`,
-      `${fb.length} கருத்துகளும் ஒரே செய்தியாக தொகுக்கப்பட்டுள்ளன.`)}</span></div>
+    ${TRIAL.sheetEndpoint
+      ? `<div class="alert ${pendingFeedback().length ? 'alert-warn' : 'alert-ok'}"><span>${pendingFeedback().length ? '▲' : '✓'}</span><span>${
+          pendingFeedback().length
+            ? L(`${pendingFeedback().length} of ${fb.length} comments have not reached the district sheet yet — usually because there was no signal. Press below to send them now.`,
+                `${fb.length} இல் ${pendingFeedback().length} இன்னும் அனுப்பப்படவில்லை.`)
+            : L(`All ${fb.length} comments are already in the district sheet. Nothing further is needed; the message below is only if you also want to send it to someone directly.`,
+                `${fb.length} கருத்துகளும் ஏற்கனவே மாவட்ட தாளில் உள்ளன.`)}</span></div>`
+      : `<div class="alert alert-info"><span>ⓘ</span><span>${L(
+          `All ${fb.length} comments are compiled into one message. Send it once, at the end — there is no need to send them one at a time.`,
+          `${fb.length} கருத்துகளும் ஒரே செய்தியாக தொகுக்கப்பட்டுள்ளன.`)}</span></div>`}
     <label class="f">${L('What will be sent', 'என்ன அனுப்பப்படும்')}</label>
     <textarea class="f" id="fb-all" rows="9" readonly>${esc(text)}</textarea>
     ${TRIAL.sheetEndpoint
       ? `<button class="btn btn-green" id="s-sheet">☁ ${L('Submit to the district sheet', 'மாவட்ட தாளுக்கு அனுப்பு')}</button>
          <div class="tiny" style="margin:4px 0 8px">${L(
-           'Goes straight into one private sheet that only the nodal officer can open. Other testers cannot see it.',
-           'நோடல் அலுவலர் மட்டுமே பார்க்கக்கூடிய தனிப்பட்ட தாளுக்கு நேரடியாக.')}</div>` : ''}
+           'Comments normally go on their own as you save them. This is only a catch-up for anything still waiting.',
+           'கருத்துகள் தானாகவே செல்லும். இது மீதமுள்ளவற்றுக்கு மட்டும்.')}</div>` : ''}
     <button class="btn ${TRIAL.sheetEndpoint ? 'btn-ghost' : ''}" id="s-share">➤ ${L('Send now', 'இப்போது அனுப்பு')}</button>
     <div class="btnrow">
       <button class="btn btn-ghost" id="s-copy">${L('Copy all', 'நகலெடு')}</button>
@@ -3874,6 +3935,13 @@ function startApp() {
   document.getElementById('menu-btn').onclick = dataMenu;
 
   window.addEventListener('hashchange', () => { closeSheet(); render(); });
+
+  /* anything that could not be sent earlier goes as soon as there is a connection */
+  if (TRIAL.sheetEndpoint) {
+    setTimeout(() => syncFeedback({ silent: true }), 1500);
+    window.addEventListener('online', () => syncFeedback({ silent: true }));
+    setInterval(() => { if (pendingFeedback().length) syncFeedback({ silent: true }); }, 120000);
+  }
   if (!location.hash || !signedIn()) location.hash = '#/login';
   render();
 
