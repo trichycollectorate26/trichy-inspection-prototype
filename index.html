@@ -893,9 +893,9 @@ function exportCSV(entity) {
       ageDays: State.ageDays(g), overdue: State.overdue(g) ? 'Yes' : 'No',
       description: g.desc
     })),
-    feedback: () => State.data.feedback.map(f => ({
-      id: f.id, on: f.on, by: f.by, screen: f.screen, verdict: f.verdict,
-      comment: f.comment, device: f.ua
+    feedback: () => allFeedback().map(f => ({
+      id: f.id, on: f.on, tester: f.who || f.by, source: f.src || 'This device',
+      screen: f.screen, verdict: f.verdict, comment: f.comment, device: f.ua || ''
     }))
   }[entity]();
 
@@ -2472,6 +2472,8 @@ function dataMenu() {
       <button class="btn btn-ghost" onclick="exportCSV('grievances')">${L('Grievances CSV', 'குறைகள்')}</button>
       <button class="btn btn-ghost" onclick="exportCSV('feedback')">${L('Feedback CSV', 'கருத்துகள்')}</button>
     </div>
+    <button class="btn btn-green" onclick="sendAllFeedback()">
+      ➤ ${L('Send all my feedback', 'கருத்துகள் அனைத்தையும் அனுப்பு')} (${d.feedback.length})</button>
     <hr class="rule">
     <button class="btn" onclick="location.hash='#/review'">
       ☷ ${L('See all feedback received', 'பெறப்பட்ட கருத்துகள்')} (${allFeedback().length})</button>
@@ -2503,8 +2505,10 @@ function feedbackSheet() {
     <textarea class="f" rows="4" id="fb-text" placeholder="${L('In Tamil or English', 'தமிழ் அல்லது ஆங்கிலம்')}"></textarea>
     <button class="btn" id="fb-save">${L('Save feedback', 'கருத்தை சேமி')}</button>
     <div class="tiny" style="margin-top:8px">${L(
-      'Saved on this phone. Export the feedback file at the end of the trial and send it to the nodal officer.',
-      'இந்த கைபேசியில் சேமிக்கப்படும். சோதனை முடிவில் ஏற்றுமதி செய்து அனுப்பவும்.')}</div>`);
+      'Comments are collected on this phone as you go. When you have finished, send them all in one go from the ⇅ menu — you do not send them one at a time.',
+      'கருத்துகள் இங்கே சேகரிக்கப்படும். முடிந்ததும் ⇅ மெனுவிலிருந்து அனைத்தையும் ஒரே சேர அனுப்பவும்.')}</div>
+    ${State.data.feedback.length ? `<div class="tiny" style="margin-top:4px"><b>${
+      State.data.feedback.length}</b> ${L('already saved on this phone.', 'ஏற்கனவே சேமிக்கப்பட்டுள்ளது.')}</div>` : ''}`);
   let verdict = 'change';
   body.querySelectorAll('[data-v]').forEach(b => b.onclick = () => {
     verdict = b.dataset.v;
@@ -2514,18 +2518,11 @@ function feedbackSheet() {
   body.querySelector('#fb-save').onclick = () => {
     const comment = body.querySelector('#fb-text').value.trim();
     if (!comment && verdict === 'change') return toast(L('Please say what should change.', 'என்ன மாற்ற வேண்டும் எனக் கூறவும்.'), 'crit');
-    const rec = State.addFeedback({ screen: screenKey, verdict, comment });
+    State.addFeedback({ screen: screenKey, verdict, comment });
     closeSheet();
-    toast(L('Thank you — feedback saved.', 'நன்றி — கருத்து சேமிக்கப்பட்டது.'));
-    const body2 = sheet(L('Send it now?', 'இப்போது அனுப்பவா?'), `
-      <div class="tiny" style="margin-bottom:10px">${L(
-        'Saved on this phone. Sending it now means it reaches ' + TRIAL.nodalName + ' even if you forget to export at the end.',
-        'இப்போது அனுப்பினால் இறுதியில் ஏற்றுமதி மறந்தாலும் சென்றுவிடும்.')}</div>
-      <button class="btn" id="fb-send">➤ ${L('Send to ' + TRIAL.nodalName, 'அனுப்பு')}</button>
-      ${TRIAL.formUrl ? `<a class="btn btn-ghost" target="_blank" rel="noopener" href="${TRIAL.formUrl}">${
-        L('Or fill the feedback form', 'அல்லது படிவத்தை நிரப்பவும்')}</a>` : ''}
-      <button class="btn btn-grey" onclick="closeSheet()">${L('Later — I will export at the end', 'பின்னர்')}</button>`);
-    body2.querySelector('#fb-send').onclick = () => { shareText(feedbackAsText(rec)); closeSheet(); };
+    const n = State.data.feedback.length;
+    toast(L(`Saved. ${n} comment${n === 1 ? '' : 's'} so far — send them all together at the end.`,
+            `சேமிக்கப்பட்டது. இதுவரை ${n} கருத்து — இறுதியில் ஒரே சேர அனுப்பவும்.`));
   };
 }
 
@@ -2611,15 +2608,125 @@ function shareText(text) {
   }
   return false;
 }
-function feedbackAsText(f) {
-  return [
-    'Trichy asset app — trial feedback',
-    'From: ' + (f.by || '') + (f.mobile ? ' (' + f.mobile + ')' : ''),
-    'Screen: ' + f.screen,
-    'Verdict: ' + ({ ok: 'Works as expected', change: 'Needs change', broken: 'Something broke' }[f.verdict] || f.verdict),
-    'Comment: ' + (f.comment || '—'),
-    'Recorded: ' + fmtDateTime(f.on)
-  ].join('\n');
+const VERDICT_LABEL = { ok: 'Works as expected', change: 'Needs change', broken: 'Something broke' };
+
+/* Compile every comment on this device into one message. */
+function compileMyFeedback() {
+  const d = State.data, fb = d.feedback;
+  const counts = { ok: 0, change: 0, broken: 0 };
+  fb.forEach(f => { if (counts[f.verdict] !== undefined) counts[f.verdict]++; });
+  const lines = [];
+  lines.push('TRICHY ASSET & INSPECTION APP — TRIAL FEEDBACK');
+  lines.push('From: ' + (d.profile.name || 'Trial user') + (d.profile.mobile ? ' (' + d.profile.mobile + ')' : ''));
+  lines.push('Trial period: ' + fmtDate(d.meta.started) + ' to ' + fmtDate(new Date().toISOString()));
+  lines.push('Recorded on this phone: ' + d.assets.length + ' assets, ' + d.inspections.length +
+             ' inspections, ' + d.grievances.length + ' grievances');
+  lines.push('Comments: ' + fb.length + '  (needs change ' + counts.change +
+             ', broke ' + counts.broken + ', works ' + counts.ok + ')');
+  lines.push('');
+  ['broken', 'change', 'ok'].forEach(v => {
+    const set = fb.filter(f => f.verdict === v);
+    if (!set.length) return;
+    lines.push('--- ' + (VERDICT_LABEL[v] || v).toUpperCase() + ' (' + set.length + ') ---');
+    set.forEach((f, i) => {
+      lines.push((i + 1) + '. [' + f.screen + '] ' + (f.comment || '(no comment)'));
+    });
+    lines.push('');
+  });
+  lines.push('Sent from the prototype. Data file attached separately if requested.');
+  return lines.join('\n');
+}
+
+/* Compile everything, including files imported from other testers. */
+function compileConsolidated() {
+  const all = allFeedback();
+  const testers = {};
+  all.forEach(f => { const k = f.src || f.who || 'Unknown'; (testers[k] = testers[k] || []).push(f); });
+  const byScreen = {};
+  all.forEach(f => { (byScreen[f.screen] = byScreen[f.screen] || []).push(f); });
+  const counts = { ok: 0, change: 0, broken: 0 };
+  all.forEach(f => { if (counts[f.verdict] !== undefined) counts[f.verdict]++; });
+
+  const out = [];
+  out.push('# Trial feedback — consolidated report');
+  out.push('');
+  out.push('Asset Monitoring, Field Inspection and Grievance Redressal prototype');
+  out.push('District Administration, Tiruchirappalli');
+  out.push('');
+  out.push('Compiled: ' + fmtDateTime(new Date().toISOString()));
+  out.push('Testers: ' + Object.keys(testers).length + ' — ' + Object.keys(testers).join(', '));
+  out.push('Comments: ' + all.length + ' (something broke ' + counts.broken +
+           ', needs change ' + counts.change + ', works as expected ' + counts.ok + ')');
+  out.push('');
+  out.push('## Screens attracting the most comments');
+  out.push('');
+  out.push('| Screen | Comments | Broke | Needs change | Works |');
+  out.push('|---|---|---|---|---|');
+  Object.keys(byScreen).sort((a, b) => byScreen[b].length - byScreen[a].length).forEach(k => {
+    const set = byScreen[k];
+    out.push('| ' + k + ' | ' + set.length + ' | ' + set.filter(x => x.verdict === 'broken').length +
+             ' | ' + set.filter(x => x.verdict === 'change').length +
+             ' | ' + set.filter(x => x.verdict === 'ok').length + ' |');
+  });
+  out.push('');
+  ['broken', 'change', 'ok'].forEach(v => {
+    const set = all.filter(f => f.verdict === v);
+    if (!set.length) return;
+    out.push('## ' + (VERDICT_LABEL[v] || v) + ' (' + set.length + ')');
+    out.push('');
+    set.forEach(f => {
+      out.push('- **' + f.screen + '** — ' + (f.comment || '(no comment)') +
+               '  \n  _' + (f.who || '') + ', ' + fmtDateTime(f.on) + '_');
+    });
+    out.push('');
+  });
+  out.push('## Per tester');
+  out.push('');
+  out.push('| Tester | Comments | Assets | Inspections | Grievances |');
+  out.push('|---|---|---|---|---|');
+  out.push('| This device (' + (State.data.profile.name || 'Trial user') + ') | ' +
+           State.data.feedback.length + ' | ' + State.data.assets.length + ' | ' +
+           State.data.inspections.length + ' | ' + State.data.grievances.length + ' |');
+  State.data.imported.forEach(i => {
+    out.push('| ' + i.who + ' | ' + i.feedback.length + ' | ' + i.assets + ' | ' +
+             i.inspections + ' | ' + i.grievances + ' |');
+  });
+  out.push('');
+  return out.join('\n');
+}
+
+/* One share, at the end — never one comment at a time. */
+function sendAllFeedback() {
+  const fb = State.data.feedback;
+  if (!fb.length) { toast(L('No feedback recorded on this phone yet.', 'இதுவரை கருத்து இல்லை.'), 'crit'); return; }
+  const text = compileMyFeedback();
+  const body = sheet(L('Send all my feedback', 'என் கருத்துகள் அனைத்தையும் அனுப்பு'), `
+    <div class="alert alert-info"><span>ⓘ</span><span>${L(
+      `All ${fb.length} comments are compiled into one message. Send it once, at the end — there is no need to send them one at a time.`,
+      `${fb.length} கருத்துகளும் ஒரே செய்தியாக தொகுக்கப்பட்டுள்ளன.`)}</span></div>
+    <label class="f">${L('What will be sent', 'என்ன அனுப்பப்படும்')}</label>
+    <textarea class="f" id="fb-all" rows="9" readonly>${esc(text)}</textarea>
+    <button class="btn" id="s-share">➤ ${L('Send now', 'இப்போது அனுப்பு')}</button>
+    <div class="btnrow">
+      <button class="btn btn-ghost" id="s-copy">${L('Copy all', 'நகலெடு')}</button>
+      <button class="btn btn-ghost" id="s-file">${L('Save as file', 'கோப்பாக சேமி')}</button>
+    </div>
+    ${TRIAL.formUrl ? `<a class="btn btn-grey" target="_blank" rel="noopener" href="${TRIAL.formUrl}">${
+      L('Or fill the feedback form', 'அல்லது படிவத்தை நிரப்பவும்')}</a>` : ''}
+    <div class="tiny" style="margin-top:8px">${L(
+      'Also send the data file (⇅ → Export everything) so the nodal officer can see what you recorded, not only what you said.',
+      'தரவு கோப்பையும் (⇅ → ஏற்றுமதி) அனுப்பவும்.')}</div>`);
+  body.querySelector('#s-share').onclick = () => { shareText(text); };
+  body.querySelector('#s-copy').onclick = () => {
+    const ta = body.querySelector('#fb-all'); ta.removeAttribute('readonly'); ta.select();
+    if (navigator.clipboard) navigator.clipboard.writeText(text).catch(() => {});
+    else document.execCommand('copy');
+    ta.setAttribute('readonly', '');
+    toast(L('Copied. Paste it into WhatsApp or email.', 'நகலெடுக்கப்பட்டது.'));
+  };
+  body.querySelector('#s-file').onclick = () => {
+    download(text, 'feedback-' + (State.data.profile.name || 'tester').replace(/\s+/g, '-') + '.txt', 'text/plain');
+  };
 }
 
 /* ---------------- feedback review ---------------- */
@@ -2673,7 +2780,11 @@ const reviewScreen = {
       ${all.length ? `
       <div class="chartcard">
         <h4>${L('Screens with the most comments', 'அதிக கருத்துகள் பெற்ற திரைகள்')}
-          <button class="mini-btn" onclick="exportCSV('feedback')">${L('Export feedback CSV', 'கருத்துகள் CSV')}</button></h4>
+          <span class="srcbtns">
+            <button class="mini-btn on" onclick="downloadConsolidated()">⇩ ${L('Consolidated report', 'ஒருங்கிணைந்த அறிக்கை')}</button>
+            <button class="mini-btn" onclick="shareConsolidated()">➤ ${L('Share it', 'பகிர்')}</button>
+            <button class="mini-btn" onclick="exportCSV('feedback')">${L('All comments CSV', 'CSV')}</button>
+          </span></h4>
         <div class="cap">${L('Where testers stopped and said something. The longest bar is where the design is least clear.',
           'சோதனையாளர்கள் நின்று கருத்து சொன்ன இடங்கள்.')}</div>
         ${(() => {
@@ -2740,6 +2851,16 @@ const reviewScreen = {
   }
 };
 
+function downloadConsolidated() {
+  if (!allFeedback().length) { toast(L('Nothing to compile yet.', 'தொகுக்க எதுவும் இல்லை.'), 'crit'); return; }
+  download(compileConsolidated(), 'trial-feedback-consolidated.md', 'text/markdown');
+  toast(L('Consolidated report downloaded. Circulate it as it is.', 'அறிக்கை பதிவிறக்கப்பட்டது.'));
+}
+function shareConsolidated() {
+  if (!allFeedback().length) { toast(L('Nothing to compile yet.', 'தொகுக்க எதுவும் இல்லை.'), 'crit'); return; }
+  shareText(compileConsolidated());
+}
+
 /* ---------------- boot ---------------- */
 function boot() {
   State.load();
@@ -2786,6 +2907,8 @@ window.loadDemo = loadDemo; window.askReset = askReset;
 window.exportJSON = exportJSON; window.exportCSV = exportCSV;
 window.dashClear = dashClear; window.render = render;
 window.closeSheet = closeSheet; window.shareText = shareText;
+window.sendAllFeedback = sendAllFeedback;
+window.downloadConsolidated = downloadConsolidated; window.shareConsolidated = shareConsolidated;
 
 })();
 </script>
