@@ -1,7 +1,7 @@
 {
   "_readme": "Settings for the trial. Edit this file on GitHub and press Commit changes — nothing needs rebuilding, and testers pick it up the next time they open the app. Leave a value as \"\" to switch that feature off.",
 
-  "sheetEndpoint": "",
+  "sheetEndpoint": "https://script.google.com/macros/s/AKfycbwOsy-uMJGcj_vpsDR1KIikanuQau2llBR6zqECd0dEEcKS71HQLCXKfPD5AhlPvdZc/exec",
   "_sheetEndpoint": "Paste the Apps Script web-app URL here, the one ending in /exec. Feedback then goes into your Google Sheet as it is written. See docs/GOOGLE-SHEET-SETUP.md.",
 
   "sheetToken": "trichy-trial-2026",
