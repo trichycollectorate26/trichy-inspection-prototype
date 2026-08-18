@@ -528,6 +528,17 @@ const SETTINGS = {
   centre: { lat: 10.9, lng: 78.75 }   // used only when the browser refuses location
 };
 
+/* ---------- where trial feedback should be sent ----------
+   Put the nodal officer's WhatsApp number here (country code, no + or spaces)
+   and the app will offer a one-tap "Send to nodal officer" button after every
+   piece of feedback. Leave it blank and the button simply opens the phone's
+   normal share sheet instead. */
+const TRIAL = {
+  nodalName: 'the nodal officer',
+  nodalWhatsApp: '',          // e.g. '919876543210'
+  formUrl: ''                 // optional Google Form link, shown as a second option
+};
+
 /* ---------- interface strings ---------- */
 const STRINGS = {
   en: {
@@ -627,7 +638,7 @@ const Photos = {
 const EMPTY = {
   profile: { name: '', mobile: '', role: 'officer', dept: 'Village Panchayat', hab: 'Melapatti' },
   settings: { lang: 'en', fence: SETTINGS.fenceMetres },
-  assets: [], inspections: [], grievances: [], nilReturns: [], feedback: [],
+  assets: [], inspections: [], grievances: [], nilReturns: [], feedback: [], imported: [],
   seq: { A: 0, I: 0, G: 0, F: 0 },
   meta: { started: null, lastExport: null }
 };
@@ -911,6 +922,41 @@ function download(text, filename, mime) {
   a.href = url; a.download = filename;
   document.body.appendChild(a); a.click(); a.remove();
   setTimeout(() => URL.revokeObjectURL(url), 2000);
+}
+
+/* ---- bring in export files collected from other testers ---- */
+async function importFiles(fileList) {
+  const results = [];
+  for (const f of fileList) {
+    try {
+      const obj = JSON.parse(await f.text());
+      if (obj.app !== 'trichy-asset-trial') { results.push({ file: f.name, ok: false, why: 'Not a trial export file' }); continue; }
+      const who = (obj.profile && obj.profile.name) || f.name.replace(/\.json$/i, '');
+      const already = State.data.imported.findIndex(x => x.file === f.name && x.exportedAt === obj.exportedAt);
+      const rec = {
+        file: f.name, who, mobile: (obj.profile || {}).mobile || '',
+        exportedAt: obj.exportedAt, counts: obj.counts || {},
+        feedback: obj.feedback || [], assets: (obj.assets || []).length,
+        inspections: (obj.inspections || []).length, grievances: (obj.grievances || []).length
+      };
+      if (already >= 0) State.data.imported[already] = rec; else State.data.imported.push(rec);
+      results.push({ file: f.name, ok: true, who, feedback: rec.feedback.length });
+    } catch (e) {
+      results.push({ file: f.name, ok: false, why: 'Could not read this file' });
+    }
+  }
+  State.save();
+  return results;
+}
+
+/* ---- every piece of feedback, this device plus everything imported ---- */
+function allFeedback() {
+  const mine = State.data.feedback.map(f => Object.assign({}, f, {
+    who: f.by || 'This device', src: 'This device'
+  }));
+  const theirs = State.data.imported.flatMap(imp =>
+    imp.feedback.map(f => Object.assign({}, f, { who: f.by || imp.who, src: imp.who })));
+  return mine.concat(theirs).sort((a, b) => String(b.on).localeCompare(String(a.on)));
 }
 
 function mapsLink(loc) {
@@ -2336,7 +2382,8 @@ const ROUTES = [
   [/^#\/d\/home/,                () => dHome],
   [/^#\/d\/queue\//,             () => dQueue],
   [/^#\/d\/g\//,                 () => dGrievance],
-  [/^#\/dashboard/,              () => dashboard]
+  [/^#\/dashboard/,              () => dashboard],
+  [/^#\/review/,                 () => reviewScreen]
 ];
 
 const TABS = {
@@ -2426,6 +2473,9 @@ function dataMenu() {
       <button class="btn btn-ghost" onclick="exportCSV('feedback')">${L('Feedback CSV', 'கருத்துகள்')}</button>
     </div>
     <hr class="rule">
+    <button class="btn" onclick="location.hash='#/review'">
+      ☷ ${L('See all feedback received', 'பெறப்பட்ட கருத்துகள்')} (${allFeedback().length})</button>
+    <hr class="rule">
     <button class="btn btn-grey" onclick="loadDemo()">${L('Load sample data (for a demonstration)', 'மாதிரி தரவை ஏற்று')}</button>
     <button class="btn btn-grey" onclick="askReset()">${L('Reset to Day 0 — delete everything', 'நாள் 0 க்கு மீட்டமை')}</button>`);
 }
@@ -2464,9 +2514,18 @@ function feedbackSheet() {
   body.querySelector('#fb-save').onclick = () => {
     const comment = body.querySelector('#fb-text').value.trim();
     if (!comment && verdict === 'change') return toast(L('Please say what should change.', 'என்ன மாற்ற வேண்டும் எனக் கூறவும்.'), 'crit');
-    State.addFeedback({ screen: screenKey, verdict, comment });
+    const rec = State.addFeedback({ screen: screenKey, verdict, comment });
     closeSheet();
     toast(L('Thank you — feedback saved.', 'நன்றி — கருத்து சேமிக்கப்பட்டது.'));
+    const body2 = sheet(L('Send it now?', 'இப்போது அனுப்பவா?'), `
+      <div class="tiny" style="margin-bottom:10px">${L(
+        'Saved on this phone. Sending it now means it reaches ' + TRIAL.nodalName + ' even if you forget to export at the end.',
+        'இப்போது அனுப்பினால் இறுதியில் ஏற்றுமதி மறந்தாலும் சென்றுவிடும்.')}</div>
+      <button class="btn" id="fb-send">➤ ${L('Send to ' + TRIAL.nodalName, 'அனுப்பு')}</button>
+      ${TRIAL.formUrl ? `<a class="btn btn-ghost" target="_blank" rel="noopener" href="${TRIAL.formUrl}">${
+        L('Or fill the feedback form', 'அல்லது படிவத்தை நிரப்பவும்')}</a>` : ''}
+      <button class="btn btn-grey" onclick="closeSheet()">${L('Later — I will export at the end', 'பின்னர்')}</button>`);
+    body2.querySelector('#fb-send').onclick = () => { shareText(feedbackAsText(rec)); closeSheet(); };
   };
 }
 
@@ -2537,6 +2596,150 @@ function loadDemo() {
     L('Add sample data', 'சேர்'));
 }
 
+/* ---------------- sending feedback onward ---------------- */
+function shareText(text) {
+  if (TRIAL.nodalWhatsApp) {
+    window.open('https://wa.me/' + TRIAL.nodalWhatsApp + '?text=' + encodeURIComponent(text), '_blank');
+    return true;
+  }
+  if (navigator.share) { navigator.share({ text: text }).catch(() => {}); return true; }
+  if (navigator.clipboard) {
+    navigator.clipboard.writeText(text)
+      .then(() => toast(L('Copied. Paste it into WhatsApp or email.', 'நகலெடுக்கப்பட்டது.')))
+      .catch(() => {});
+    return true;
+  }
+  return false;
+}
+function feedbackAsText(f) {
+  return [
+    'Trichy asset app — trial feedback',
+    'From: ' + (f.by || '') + (f.mobile ? ' (' + f.mobile + ')' : ''),
+    'Screen: ' + f.screen,
+    'Verdict: ' + ({ ok: 'Works as expected', change: 'Needs change', broken: 'Something broke' }[f.verdict] || f.verdict),
+    'Comment: ' + (f.comment || '—'),
+    'Recorded: ' + fmtDateTime(f.on)
+  ].join('\n');
+}
+
+/* ---------------- feedback review ---------------- */
+const reviewScreen = {
+  title: () => L('Feedback received', 'பெறப்பட்ட கருத்துகள்'),
+  sub: () => L('This device, plus any files imported from other testers', 'இந்த சாதனம் மற்றும் இறக்குமதி செய்யப்பட்டவை'),
+  chrome: 'wide',
+  html() {
+    const all = allFeedback();
+    const byVerdict = { ok: 0, change: 0, broken: 0 };
+    all.forEach(f => { if (byVerdict[f.verdict] !== undefined) byVerdict[f.verdict]++; });
+    const byScreen = {};
+    all.forEach(f => { (byScreen[f.screen] = byScreen[f.screen] || []).push(f); });
+    const testers = {};
+    all.forEach(f => { testers[f.src || f.who] = (testers[f.src || f.who] || 0) + 1; });
+
+    return `<div class="wideinner">
+      <div class="alert alert-info"><span>ⓘ</span><span><b>${L('There is no server.', 'சேவையகம் இல்லை.')}</b>
+        ${L('Feedback is stored on the phone that recorded it. To see everyone\'s in one place, collect their exported files and import them below.',
+            'கருத்துகள் அந்தந்த கைபேசியில் உள்ளன. அனைவரின் கோப்புகளையும் கீழே இறக்குமதி செய்யவும்.')}</span></div>
+
+      <div class="kpis">
+        <div class="kpi"><div class="n">${all.length}</div><div class="l">${L('Comments in total', 'மொத்த கருத்துகள்')}</div></div>
+        <div class="kpi"><div class="n">${Object.keys(testers).length}</div><div class="l">${L('Testers', 'சோதனையாளர்கள்')}</div>
+          <div class="d">${esc(Object.keys(testers).slice(0, 4).join(', '))}</div></div>
+        <div class="kpi"><div class="n" style="color:var(--critical)">${byVerdict.broken}</div>
+          <div class="l">${L('Something broke', 'பிழை')}</div></div>
+        <div class="kpi"><div class="n" style="color:#8a5c00">${byVerdict.change}</div>
+          <div class="l">${L('Needs change', 'மாற்றம் தேவை')}</div></div>
+        <div class="kpi"><div class="n" style="color:var(--good)">${byVerdict.ok}</div>
+          <div class="l">${L('Works as expected', 'சரியாக உள்ளது')}</div></div>
+      </div>
+
+      <div class="chartcard">
+        <h4>${L('Import files from other testers', 'மற்ற சோதனையாளர்களின் கோப்புகள்')}</h4>
+        <div class="cap">${L('Each tester exports a JSON file from the ⇅ menu and sends it to you. Select any number of them here — they are merged for review and nothing is overwritten.',
+          'ஒவ்வொருவரும் ⇅ மெனுவிலிருந்து ஏற்றுமதி செய்து அனுப்பட்டும். இங்கே தேர்ந்தெடுக்கவும்.')}</div>
+        <label class="btn btn-ghost" for="imp" style="cursor:pointer">⇧ ${L('Choose exported files', 'கோப்புகளைத் தேர்ந்தெடு')}</label>
+        <input type="file" id="imp" accept=".json,application/json" multiple hidden>
+        <div id="imp-out"></div>
+        ${State.data.imported.length ? `<table class="dt" style="margin-top:10px">
+          <thead><tr><th>${L('Tester', 'சோதனையாளர்')}</th><th>${L('File', 'கோப்பு')}</th><th>${L('Exported', 'ஏற்றுமதி')}</th>
+            <th class="num">${L('Assets', 'சொத்து')}</th><th class="num">${L('Inspections', 'ஆய்வு')}</th>
+            <th class="num">${L('Grievances', 'குறை')}</th><th class="num">${L('Comments', 'கருத்து')}</th></tr></thead><tbody>
+          ${State.data.imported.map(i => `<tr><td><b>${esc(i.who)}</b></td><td class="mono">${esc(i.file)}</td>
+            <td>${fmtDateTime(i.exportedAt)}</td><td class="num">${i.assets}</td><td class="num">${i.inspections}</td>
+            <td class="num">${i.grievances}</td><td class="num">${i.feedback.length}</td></tr>`).join('')}
+        </tbody></table>` : ''}
+      </div>
+
+      ${all.length ? `
+      <div class="chartcard">
+        <h4>${L('Screens with the most comments', 'அதிக கருத்துகள் பெற்ற திரைகள்')}
+          <button class="mini-btn" onclick="exportCSV('feedback')">${L('Export feedback CSV', 'கருத்துகள் CSV')}</button></h4>
+        <div class="cap">${L('Where testers stopped and said something. The longest bar is where the design is least clear.',
+          'சோதனையாளர்கள் நின்று கருத்து சொன்ன இடங்கள்.')}</div>
+        ${(() => {
+          const keys = Object.keys(byScreen).sort((a, b) => byScreen[b].length - byScreen[a].length);
+          const max = Math.max(1, ...keys.map(k => byScreen[k].length));
+          return keys.map(k => `<div class="barrow"><span class="blabel">${esc(k)}</span>
+            <div class="btrack"><div class="bfill" style="width:${byScreen[k].length / max * 100}%"></div></div>
+            <span class="bval">${byScreen[k].length}</span></div>`).join('');
+        })()}
+      </div>
+
+      <div class="chartcard">
+        <h4>${L('Every comment', 'அனைத்து கருத்துகளும்')}</h4>
+        <div class="cap">${L('Newest first. This is the amendment list for the next version.', 'புதியவை முதலில்.')}</div>
+        <table class="dt"><thead><tr><th>${L('When', 'எப்போது')}</th><th>${L('Who', 'யார்')}</th>
+          <th>${L('Screen', 'திரை')}</th><th>${L('Verdict', 'தீர்ப்பு')}</th><th>${L('Comment', 'கருத்து')}</th></tr></thead><tbody>
+          ${all.map(f => `<tr>
+            <td style="white-space:nowrap">${fmtDateTime(f.on)}</td>
+            <td>${esc(f.who || '')}${f.src && f.src !== f.who ? `<div class="tiny">${esc(f.src)}</div>` : ''}</td>
+            <td class="mono">${esc(f.screen)}</td>
+            <td><span class="tag ${f.verdict === 'ok' ? 'r-good' : f.verdict === 'broken' ? 'r-crit' : 'r-needs'}">${
+              esc({ ok: 'Works', change: 'Change', broken: 'Broke' }[f.verdict] || f.verdict)}</span></td>
+            <td>${esc(f.comment || '—')}</td></tr>`).join('')}
+        </tbody></table>
+      </div>` : `<div class="chartcard">${empty('◌',
+        L('No feedback recorded yet', 'இதுவரை கருத்து இல்லை'),
+        L('Press the ✎ Feedback button on any screen to record the first one, or import a file from a tester above.',
+          '✎ கருத்து பொத்தானை அழுத்தவும்.'))}</div>`}
+
+      <div class="chartcard">
+        <h4>${L('How to collect feedback from everyone', 'அனைவரிடமிருந்தும் எப்படி சேகரிப்பது')}</h4>
+        <table class="dt"><tbody>
+          <tr><td style="width:26%"><b>${L('In the app', 'செயலியில்')}</b></td>
+            <td>${L('Each tester presses ✎ Feedback, then ⇅ → Export everything, and sends you the file on WhatsApp. Import those files above and everything appears here in one list.',
+              'ஒவ்வொருவரும் ⇅ → ஏற்றுமதி செய்து உங்களுக்கு அனுப்பட்டும்.')}</td></tr>
+          <tr><td><b>${L('One tap to send', 'ஒரே தட்டில் அனுப்ப')}</b></td>
+            <td>${L('Set the nodal officer\'s WhatsApp number once, in data.js, and every comment gets a "Send now" button. Far more testers finish that way than remember to export a file.',
+              'நோடல் அலுவலரின் WhatsApp எண்ணை அமைத்தால் ஒவ்வொரு கருத்துக்கும் "அனுப்பு" பொத்தான் வரும்.')}</td></tr>
+          <tr><td><b>${L('GitHub Issues', 'GitHub Issues')}</b></td>
+            <td>${L('The repository has a Field feedback issue form. Anyone with a GitHub account can file one from the Issues tab and everybody sees it immediately. Best for the technical reviewers, not for field officers.',
+              'GitHub Issues தாவலில் படிவம் உள்ளது.')}</td></tr>
+          <tr><td><b>${L('A Google Form', 'Google Form')}</b></td>
+            <td>${L('If exporting files proves too much for field officers, a Google Form is the surest way — one link, answers land in one sheet. Put the link in data.js and it appears beside every feedback box.',
+              'கோப்பு ஏற்றுமதி கடினம் எனில், Google Form எளிது.')}</td></tr>
+        </tbody></table>
+      </div>
+    </div>`;
+  },
+  mount(root) {
+    const inp = root.querySelector('#imp');
+    if (!inp) return;
+    inp.onchange = async e => {
+      const files = Array.from(e.target.files || []);
+      if (!files.length) return;
+      const out = root.querySelector('#imp-out');
+      out.innerHTML = `<div class="tiny">${L('Reading…', 'படிக்கிறது…')}</div>`;
+      const res = await importFiles(files);
+      const ok = res.filter(r => r.ok);
+      out.innerHTML = res.map(r => r.ok
+        ? `<div class="alert alert-ok"><span>✓</span><span>${esc(r.file)} — ${esc(r.who)}, ${r.feedback} ${L('comments', 'கருத்துகள்')}</span></div>`
+        : `<div class="alert alert-crit"><span>⚠</span><span>${esc(r.file)} — ${esc(r.why)}</span></div>`).join('');
+      if (ok.length) setTimeout(render, 900);
+    };
+  }
+};
+
 /* ---------------- boot ---------------- */
 function boot() {
   State.load();
@@ -2560,7 +2763,7 @@ function boot() {
   document.getElementById('backbtn').onclick = () => history.back();
   document.getElementById('menu-btn').onclick = dataMenu;
 
-  window.addEventListener('hashchange', render);
+  window.addEventListener('hashchange', () => { closeSheet(); render(); });
   if (!location.hash) location.hash = '#/login';
   render();
 
@@ -2582,6 +2785,7 @@ document.addEventListener('DOMContentLoaded', boot);
 window.loadDemo = loadDemo; window.askReset = askReset;
 window.exportJSON = exportJSON; window.exportCSV = exportCSV;
 window.dashClear = dashClear; window.render = render;
+window.closeSheet = closeSheet; window.shareText = shareText;
 
 })();
 </script>
