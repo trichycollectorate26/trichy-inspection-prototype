@@ -1,0 +1,2603 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#1f3864">
+<meta name="description" content="Prototype for workflow validation — asset monitoring, field inspection and grievance redressal. District Administration, Tiruchirappalli.">
+<title>Asset &amp; Inspection — Prototype (Tiruchirappalli)</title>
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="assets/icons/icon-192.png">
+<style>
+:root{
+  --plane:#f4f5f3;--surface:#fff;--surface-2:#f9f9f7;
+  --ink:#0b0b0b;--ink-2:#52514e;--muted:#8a8880;--grid:#e1e0d9;
+  --navy:#1f3864;--blue:#2a78d6;--blue-soft:#eaf2fc;
+  --good:#0ca30c;--warning:#fab219;--serious:#ec835a;--critical:#d03b3b;
+  --tamil:"Noto Sans Tamil","Latha","Nirmala UI",sans-serif;
+  --sans:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;
+}
+@media (prefers-color-scheme:dark){:root{
+  --plane:#0d0d0d;--surface:#1a1a19;--surface-2:#222221;
+  --ink:#fff;--ink-2:#c3c2b7;--muted:#8a8880;--grid:#2c2c2a;
+  --navy:#20344f;--blue:#3987e5;--blue-soft:#17283d;}}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0}
+body{background:var(--plane);color:var(--ink);font-family:var(--sans);font-size:15px;line-height:1.5}
+a{color:inherit;text-decoration:none}
+.hide{display:none!important}
+.red{color:var(--critical)}
+.center{text-align:center}
+.pad{padding:0 2px 8px}
+.mono{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:11px;color:var(--muted)}
+
+/* ---------- disclaimer banner ---------- */
+.disclaimer{background:#8a5c00;color:#fff;font-size:12.5px;padding:8px 14px;text-align:center;font-weight:600;
+  position:sticky;top:0;z-index:40;line-height:1.35}
+.disclaimer b{font-weight:800}
+
+/* ---------- chrome ---------- */
+.wrap{max-width:1320px;margin:0 auto;padding:12px}
+header.top{display:flex;flex-wrap:wrap;gap:10px;align-items:center;justify-content:space-between;
+  background:var(--surface);border:1px solid var(--grid);border-radius:14px;padding:11px 14px;margin-bottom:10px}
+.brandline{font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--blue);font-weight:700}
+h1{font-size:16px;margin:2px 0 0;font-weight:700}
+.subline{color:var(--ink-2);font-size:11.5px;margin-top:2px}
+.pill-row{display:flex;gap:5px;flex-wrap:wrap}
+.pill{border:1px solid var(--grid);background:var(--surface-2);color:var(--ink-2);border-radius:999px;
+  padding:7px 12px;font-size:12.5px;cursor:pointer;font-weight:600;font-family:inherit;line-height:1.35}
+.pill[aria-pressed="true"]{background:var(--navy);border-color:var(--navy);color:#fff}
+.icon-btn{border:1px solid var(--grid);background:var(--surface-2);color:var(--ink-2);border-radius:999px;
+  width:34px;height:34px;font-size:15px;cursor:pointer;font-family:inherit}
+
+/* ---------- phone frame ---------- */
+.phone{background:#111;border-radius:32px;padding:9px;box-shadow:0 10px 28px rgba(0,0,0,.2);
+  width:100%;max-width:400px;margin:0 auto}
+.screen{background:var(--surface);border-radius:25px;height:min(74vh,720px);overflow:hidden;display:flex;flex-direction:column}
+.statusbar{background:var(--navy);color:#fff;font-size:10.5px;padding:6px 15px;display:flex;justify-content:space-between}
+.appbar{background:var(--navy);color:#fff;padding:9px 13px 12px;display:flex;align-items:center;gap:9px}
+.appbar .back{cursor:pointer;font-size:19px;opacity:.9;line-height:1;padding:0 4px}
+.appbar h2{font-size:14.5px;margin:0;font-weight:650}
+.appbar .sub2{font-size:10.5px;opacity:.82;margin-top:1px}
+.grow{flex:1;min-width:0}
+.body{flex:1;overflow-y:auto;padding:12px;background:var(--surface-2);-webkit-overflow-scrolling:touch}
+.tabbar{display:flex;border-top:1px solid var(--grid);background:var(--surface)}
+.tabbar a{flex:1;text-align:center;padding:8px 2px 10px;font-size:10px;color:var(--muted);cursor:pointer}
+.tabbar a.on{color:var(--blue);font-weight:700}
+.tabbar .ic{display:block;font-size:14px;margin-bottom:1px}
+@media (max-width:640px){
+  .wrap{padding:8px}
+  .phone{padding:0;border-radius:0;background:none;box-shadow:none;max-width:none}
+  .screen{height:calc(100vh - 190px);border-radius:14px}
+  header.top{padding:9px 11px}
+}
+
+/* ---------- generic ---------- */
+.card{background:var(--surface);border:1px solid var(--grid);border-radius:12px;padding:12px;margin-bottom:9px;display:block}
+.card.slim{padding:10px}
+.card.soft{background:var(--blue-soft);border-color:#bcd7f4}
+.card.tap{cursor:pointer}
+.card.tap:active{opacity:.75}
+.card.warnborder{border-color:var(--warning)}
+.row{display:flex;justify-content:space-between;align-items:center;gap:9px}
+.t1{font-weight:650;font-size:13.5px}
+.t2{color:var(--ink-2);font-size:12px;margin-top:2px}
+.t2b{font-weight:650;font-size:12.5px}
+.tiny{font-size:11px;color:var(--muted);margin-top:2px}
+.chev{color:var(--muted);font-size:17px}
+.tright{text-align:right}
+.sec{font-size:12px;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);margin:16px 0 6px;font-weight:700}
+.sec-label{margin:8px 0 6px;font-weight:700;text-transform:uppercase;letter-spacing:.06em}
+.dl{display:flex;justify-content:space-between;gap:10px;padding:5px 0;border-bottom:1px dashed var(--grid);font-size:12.5px}
+.dl:last-child{border-bottom:none}
+.dl b{font-weight:650;white-space:nowrap}
+.dl span{color:var(--ink-2);text-align:right}
+.rule{border:none;border-top:1px solid var(--grid);margin:14px 0}
+.grid3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:7px;margin-bottom:4px}
+.card.mini{text-align:center;margin:0;padding:10px 4px}
+.card.mini b{display:block;font-size:19px;font-weight:750}
+.card.mini span{font-size:10.5px;color:var(--muted)}
+.ring{min-width:46px;height:46px;border-radius:50%;border:5px solid var(--blue);display:flex;
+  align-items:center;justify-content:center;font-size:12px;font-weight:750}
+.progress{height:6px;background:var(--grid);border-radius:99px;overflow:hidden;margin-top:6px}
+.progress i{display:block;height:100%;background:var(--blue);border-radius:99px}
+.empty{text-align:center;padding:30px 14px;color:var(--muted)}
+.empty .big{font-size:32px;margin-bottom:8px;opacity:.5}
+.empty .t2{margin-top:6px}
+.hero{text-align:center;padding:20px 0 10px}
+.hero .logo{width:58px;height:58px;border-radius:16px;background:var(--navy);margin:0 auto 10px;
+  display:flex;align-items:center;justify-content:center;color:#fff;font-size:24px}
+.hero h2{margin:0;font-size:17px}
+.hero p{margin:2px 0 0;color:var(--ink-2);font-size:12.5px}
+
+/* ---------- tags ---------- */
+.tag{display:inline-flex;align-items:center;gap:4px;border-radius:999px;padding:3px 9px;font-size:10.5px;
+  font-weight:700;border:1px solid var(--grid);background:var(--surface-2);color:var(--ink-2);white-space:nowrap}
+.r-good,.s-ls{color:#0a7d0a;border-color:#bfe6bf;background:#effaef}
+.r-sat,.t-blue{color:#1a4f92;border-color:#bcd7f4;background:#eaf2fc}
+.r-needs,.s-ms{color:#8a5c00;border-color:#f2dfae;background:#fdf6e6}
+.s-cr{color:#a04a22;border-color:#f4cdba;background:#fdf0ea}
+.r-crit,.s-vc{color:#a52a2a;border-color:#f0bcbc;background:#fdeeee}
+.r-na{color:var(--muted)}
+@media (prefers-color-scheme:dark){
+ .r-good,.s-ls{background:#0e2a0e;border-color:#1d4a1d;color:#7fd97f}
+ .r-sat,.t-blue{background:#17283d;border-color:#2b4a70;color:#9dc6f5}
+ .r-needs,.s-ms{background:#2e2408;border-color:#5a4713;color:#fac95e}
+ .s-cr{background:#2e1a11;border-color:#5c3524;color:#f0a986}
+ .r-crit,.s-vc{background:#2e1010;border-color:#5c2020;color:#ea8484}}
+
+/* ---------- buttons & forms ---------- */
+.btn{display:block;width:100%;text-align:center;background:var(--blue);color:#fff;border:none;border-radius:10px;
+  padding:13px;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit;margin-top:9px}
+.btn-ghost{background:transparent;color:var(--blue);border:1.5px solid var(--blue)}
+.btn-grey{background:var(--surface);color:var(--ink-2);border:1px solid var(--grid)}
+.btn-green{background:#0a7d0a}
+.btn:disabled{opacity:.42}
+.btnrow{display:flex;gap:7px}
+.btnrow .btn{margin-top:9px}
+.mini-btn{border:1px solid var(--grid);background:var(--surface-2);border-radius:7px;font-size:11px;
+  padding:4px 9px;cursor:pointer;color:var(--ink-2);font-weight:700;font-family:inherit;white-space:nowrap}
+.mini-btn.on{background:var(--navy);color:#fff;border-color:var(--navy)}
+.mini-btn.big{flex:1;padding:10px 6px;font-size:12px}
+label.f{display:block;font-size:10.5px;color:var(--ink-2);font-weight:700;margin:11px 0 4px;
+  text-transform:uppercase;letter-spacing:.04em}
+input.f,select.f,textarea.f{width:100%;padding:11px;border:1px solid var(--grid);border-radius:9px;
+  background:var(--surface);color:var(--ink);font-size:15px;font-family:inherit}
+textarea.f{font-size:14px}
+.disabled-block{opacity:.35;pointer-events:none}
+.sub-form{border-top:1px dashed var(--grid);margin-top:8px;padding-top:4px}
+
+/* ---------- photos ---------- */
+.photorow{display:flex;gap:6px;margin-top:6px;flex-wrap:wrap}
+.photo{flex:1 1 30%;min-width:86px;aspect-ratio:1;border:1.5px dashed var(--grid);border-radius:9px;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;color:var(--muted);
+  font-size:10px;text-align:center;cursor:pointer;gap:3px;background-size:cover;background-position:center;padding:4px}
+.photo .ic{font-size:17px}
+.photo.has-img{border-style:solid;border-color:var(--blue)}
+.photo.busy{border-color:var(--blue);color:var(--blue)}
+.mini-photo{flex:none;width:46px;height:46px;min-width:0;margin-top:5px;display:inline-block}
+
+/* ---------- ratings ---------- */
+.ratings{display:flex;gap:4px;margin-top:7px;flex-wrap:wrap}
+.rate{flex:1 1 18%;min-width:56px;text-align:center;border:1px solid var(--grid);border-radius:8px;
+  padding:8px 2px;font-size:10.5px;cursor:pointer;font-weight:700;color:var(--ink-2);
+  background:var(--surface);font-family:inherit}
+.rate.on.r-good{background:#effaef;border-color:#0ca30c;color:#0a7d0a}
+.rate.on.r-sat{background:#eaf2fc;border-color:var(--blue);color:#1a4f92}
+.rate.on.r-needs{background:#fdf6e6;border-color:#fab219;color:#8a5c00}
+.rate.on.r-crit{background:#fdeeee;border-color:#d03b3b;color:#a52a2a}
+.rate.on.r-na{background:var(--surface-2);border-color:var(--muted);color:var(--muted)}
+
+/* ---------- alerts ---------- */
+.alert{border-radius:10px;padding:10px 12px;font-size:12px;margin-bottom:9px;border:1px solid;
+  display:flex;gap:8px;align-items:flex-start;line-height:1.45}
+.alert-ok{background:#effaef;border-color:#bfe6bf;color:#0a5c0a}
+.alert-warn{background:#fdf6e6;border-color:#f2dfae;color:#7a5000}
+.alert-crit{background:#fdeeee;border-color:#f0bcbc;color:#8f2020}
+.alert-info{background:var(--blue-soft);border-color:#bcd7f4;color:#1a4f92}
+@media (prefers-color-scheme:dark){
+ .alert-ok{background:#0e2a0e;border-color:#1d4a1d;color:#8ee08e}
+ .alert-warn{background:#2e2408;border-color:#5a4713;color:#f7d489}
+ .alert-crit{background:#2e1010;border-color:#5c2020;color:#f0a0a0}
+ .alert-info{background:#17283d;border-color:#2b4a70;color:#9dc6f5}}
+
+/* ---------- steps ---------- */
+.steps{margin:6px 0 0;padding:0;list-style:none}
+.steps li{display:flex;gap:9px;padding:6px 0;font-size:12px;border-bottom:1px solid var(--grid)}
+.steps li:last-child{border-bottom:none}
+.dot{width:18px;height:18px;border-radius:50%;flex:none;display:flex;align-items:center;justify-content:center;
+  font-size:9.5px;font-weight:800;background:var(--grid);color:var(--ink-2)}
+.dot.done{background:var(--good);color:#fff}
+.dot.block{background:var(--critical);color:#fff}
+
+/* ---------- severity grid ---------- */
+.sevgrid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px}
+.sevcard{border-radius:12px;padding:12px;border:1.5px solid var(--grid);background:var(--surface);display:block}
+.sevcard .n{font-size:24px;font-weight:750;line-height:1.1}
+.sevcard .l{font-size:11px;font-weight:700;margin-top:2px}
+.sevcard .d{font-size:10px;color:var(--muted);margin-top:3px}
+.sevcard.s-vc{border-color:var(--critical)}.sevcard.s-vc .n{color:var(--critical)}
+.sevcard.s-cr{border-color:var(--serious)}.sevcard.s-cr .n{color:var(--serious)}
+.sevcard.s-ms{border-color:var(--warning)}.sevcard.s-ms .n{color:#8a5c00}
+.sevcard.s-ls{border-color:var(--good)}.sevcard.s-ls .n{color:var(--good)}
+
+/* ---------- dashboard ---------- */
+.widewrap{background:var(--surface-2);border:1px solid var(--grid);border-radius:14px;overflow:hidden}
+.wide-head{background:var(--navy);color:#fff;padding:11px 16px}
+.wide-head h2{margin:0;font-size:16px}
+.wide-head .sub2{font-size:11px;opacity:.85}
+.wideinner{padding:14px}
+.chips{display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-bottom:11px;min-height:26px}
+.chip{background:var(--navy);color:#fff;border-radius:999px;padding:4px 11px;font-size:11px;font-weight:650;cursor:pointer}
+.chip b{opacity:.75;margin-left:5px}
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:9px;margin-bottom:12px}
+.kpi{background:var(--surface);border:1px solid var(--grid);border-radius:12px;padding:12px;cursor:pointer}
+.kpi .n{font-size:23px;font-weight:750;line-height:1.1}
+.kpi .l{font-size:10.5px;color:var(--ink-2);margin-top:3px}
+.kpi .d{font-size:10px;color:var(--muted);margin-top:4px}
+.kpi.alert{display:block;border-color:var(--grid);background:var(--surface);color:inherit}
+.kpi.alert .n{color:var(--critical)}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:12px;align-items:start}
+@media (max-width:820px){.grid2{grid-template-columns:1fr}.kpis{grid-template-columns:1fr 1fr}}
+.chartcard{background:var(--surface);border:1px solid var(--grid);border-radius:12px;padding:13px 15px;margin-bottom:12px}
+.chartcard h4{margin:0 0 2px;font-size:13px;display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap}
+.chartcard .cap{font-size:10.5px;color:var(--muted);margin-bottom:11px}
+.srcbtns{display:flex;gap:4px;flex-wrap:wrap}
+.barrow{display:grid;grid-template-columns:minmax(90px,140px) 1fr 46px;gap:8px;align-items:center;
+  margin-bottom:6px;font-size:11px;cursor:pointer}
+.barrow.dim{opacity:.33}
+.blabel{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.btrack{background:var(--grid);height:15px;border-radius:4px;overflow:hidden}
+.bfill{height:100%;border-radius:0 4px 4px 0;background:var(--blue);transition:width .18s}
+.bval{text-align:right;font-weight:650;color:var(--ink-2)}
+.stack{display:flex;height:21px;border-radius:5px;overflow:hidden;gap:2px;background:var(--surface)}
+.stack i{display:block;height:100%;cursor:pointer}
+.legend{display:flex;gap:12px;flex-wrap:wrap;font-size:11px;color:var(--ink-2);margin-top:9px}
+.legend span{display:flex;align-items:center;gap:5px;cursor:pointer}
+.legend span.dim{opacity:.33}
+.sw{width:10px;height:10px;border-radius:3px;display:inline-block;flex:none}
+table.dt{width:100%;border-collapse:collapse;font-size:11.5px}
+table.dt th{text-align:left;font-size:10px;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);
+  border-bottom:1px solid var(--grid);padding:6px;font-weight:700}
+table.dt td{padding:7px 6px;border-bottom:1px solid var(--grid);color:var(--ink-2);vertical-align:top}
+table.dt tr:last-child td{border-bottom:none}
+table.dt tr[data-set]{cursor:pointer}
+table.dt tr[data-set]:hover td{background:var(--blue-soft)}
+td.num{text-align:right;font-weight:700;font-variant-numeric:tabular-nums;white-space:nowrap}
+.maplink{color:var(--blue);font-weight:700}
+.mapbox{position:relative;border:1px solid var(--grid);border-radius:10px;overflow:hidden}
+.maptag{position:absolute;left:8px;top:8px;background:rgba(255,255,255,.9);color:#333;border-radius:6px;
+  padding:2px 8px;font-size:10px;font-weight:700;border:1px solid var(--grid);z-index:2}
+.dashscroll{max-height:none;overflow:visible}
+
+/* ---------- modal & toast ---------- */
+.modal-bg{position:fixed;inset:0;background:rgba(0,0,0,.5);display:flex;align-items:flex-end;
+  justify-content:center;z-index:60;padding:0}
+@media (min-width:640px){.modal-bg{align-items:center;padding:24px}}
+.modal-box{background:var(--surface);border-radius:16px 16px 0 0;width:100%;max-width:640px;
+  max-height:86vh;overflow:auto;padding:16px 16px 24px;border:1px solid var(--grid)}
+@media (min-width:640px){.modal-box{border-radius:14px}}
+.modal-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;font-size:15px}
+.modal-head .x{border:none;background:none;font-size:24px;line-height:1;cursor:pointer;color:var(--muted)}
+.modal-actions{display:flex;gap:8px}
+.modal-actions .btn{margin-top:0}
+.toast{position:fixed;left:50%;bottom:24px;transform:translate(-50%,20px);background:#111;color:#fff;
+  padding:11px 16px;border-radius:10px;font-size:13px;z-index:80;opacity:0;transition:.25s;max-width:88vw;text-align:center}
+.toast.in{opacity:1;transform:translate(-50%,0)}
+.toast-crit{background:var(--critical)}
+
+/* ---------- feedback button ---------- */
+.fab{position:fixed;right:14px;bottom:14px;z-index:50;background:var(--navy);color:#fff;border:none;
+  border-radius:999px;padding:12px 16px;font-size:13px;font-weight:700;cursor:pointer;
+  box-shadow:0 4px 14px rgba(0,0,0,.28);font-family:inherit}
+footer.note{margin-top:14px;font-size:11px;color:var(--muted);text-align:center;padding-bottom:70px;line-height:1.5}
+.ta{font-family:var(--tamil)}
+
+</style>
+</head>
+<body>
+
+<div class="disclaimer">
+  <b>PROTOTYPE FOR WORKFLOW VALIDATION ONLY.</b>
+  Records are created by you on this device for trial purposes. This is not a government system and holds no official data.
+</div>
+
+<div class="wrap">
+  <header class="top">
+    <div>
+      <div class="brandline">District Administration, Tiruchirappalli</div>
+      <h1>Asset Monitoring, Field Inspection &amp; Grievance Redressal</h1>
+      <div class="subline">Prototype v0.3 — for trial and feedback. Works offline. Nothing is sent anywhere.</div>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:7px;align-items:flex-end">
+      <div class="pill-row" id="roles">
+        <button class="pill" data-role="officer" aria-pressed="true">Field Officer</button>
+        <button class="pill" data-role="volunteer">Volunteer</button>
+        <button class="pill" data-role="dept">Maintenance Dept</button>
+        <button class="pill" data-role="collector">Collector Dashboard</button>
+      </div>
+      <div class="pill-row">
+        <button class="pill" id="langbtn">தமிழ்</button>
+        <button class="icon-btn" id="menu-btn" title="Trial data">⇅</button>
+      </div>
+    </div>
+  </header>
+
+  <div id="phonewrap">
+    <div class="phone">
+      <div class="screen">
+        <div class="statusbar"><span id="clock">—</span><span id="netstate">●</span></div>
+        <div class="appbar">
+          <span class="back" id="backbtn">‹</span>
+          <div class="grow"><h2 id="scr-title">Login</h2><div class="sub2" id="scr-sub"></div></div>
+        </div>
+        <div class="body" id="body"></div>
+        <div class="tabbar" id="tabs"></div>
+      </div>
+    </div>
+  </div>
+
+  <div id="widewrap" class="widewrap hide">
+    <div class="wide-head"><h2 id="wide-title">Collector dashboard</h2><div class="sub2" id="wide-sub"></div></div>
+    <div id="wide-body"></div>
+  </div>
+
+  <footer class="note">
+    Prototype for internal discussion — District Administration, Tiruchirappalli.<br>
+    All records are created by the person using this device and are stored only in this browser.
+    Map panels are placeholders; the “Navigate” links open Google Maps and need no API key.<br>
+    Current screen: <span id="fb-screen">login</span>
+  </footer>
+</div>
+
+<button class="fab" id="fb-btn">✎ Feedback</button>
+<div id="modal-host"></div>
+
+<script>
+(function(){
+
+/* ===== data.js ===== */
+/* ============================================================
+   data.js — masters and reference lists
+   Everything in this file is configuration, not code. A
+   non-programmer can safely edit the lists below: add an asset
+   type, change a checklist parameter, rename a department.
+   ============================================================ */
+
+const APP = {
+  name: 'Asset Monitoring, Field Inspection & Grievance Redressal',
+  shortName: 'Asset & Inspection',
+  district: 'Tiruchirappalli',
+  version: '0.3.0-trial',
+  build: 'prototype — not for production use'
+};
+
+/* ---------- checklist families ---------- */
+const FAMILIES = {
+  bld: { en: 'Building', ta: 'கட்டிடம்' },
+  san: { en: 'Sanitation', ta: 'துப்புரவு' },
+  wat: { en: 'Water', ta: 'நீர்' },
+  inf: { en: 'Road & street', ta: 'சாலை & தெரு' },
+  opn: { en: 'Open space', ta: 'திறந்தவெளி' }
+};
+
+/* ---------- asset types (Annexure A1) ---------- */
+const TYPES = [
+  { c: 'ANG', en: 'Anganwadi Centre',              ta: 'அங்கன்வாடி மையம்',        fam: 'bld', occ: 'Social Welfare',        mnt: 'Village Panchayat' },
+  { c: 'SCH', en: 'Panchayat Union Primary School', ta: 'ஊராட்சி ஒன்றியப் பள்ளி',  fam: 'bld', occ: 'School Education',      mnt: 'School Education' },
+  { c: 'HSC', en: 'Health Sub-Centre',             ta: 'சுகாதார துணை மையம்',      fam: 'bld', occ: 'Health',                mnt: 'Public Works Department' },
+  { c: 'PHC', en: 'Primary Health Centre',         ta: 'ஆரம்ப சுகாதார நிலையம்',   fam: 'bld', occ: 'Health',                mnt: 'Public Works Department' },
+  { c: 'REV', en: 'Village Panchayat Office',      ta: 'ஊராட்சி அலுவலகம்',        fam: 'bld', occ: 'Rural Development',     mnt: 'Village Panchayat' },
+  { c: 'NMC', en: 'Noon Meal Centre',              ta: 'மதிய உணவு மையம்',         fam: 'bld', occ: 'Social Welfare',        mnt: 'Village Panchayat' },
+  { c: 'PDS', en: 'Fair Price Shop',               ta: 'நியாய விலைக் கடை',        fam: 'bld', occ: 'Co-operatives',         mnt: 'Co-operatives' },
+  { c: 'LIB', en: 'Village Library',               ta: 'கிராம நூலகம்',            fam: 'bld', occ: 'Public Libraries',      mnt: 'Village Panchayat' },
+  { c: 'CHL', en: 'Community Hall',                ta: 'சமுதாயக் கூடம்',          fam: 'bld', occ: 'Rural Development',     mnt: 'Village Panchayat' },
+  { c: 'HOS', en: 'Welfare Hostel',                ta: 'நல விடுதி',               fam: 'bld', occ: 'Adi Dravidar Welfare',  mnt: 'Public Works Department' },
+  { c: 'SHG', en: 'SHG / Mahalir Building',        ta: 'மகளிர் குழு கட்டிடம்',    fam: 'bld', occ: 'Rural Development',     mnt: 'Village Panchayat' },
+  { c: 'CTL', en: 'Community Toilet',              ta: 'பொது கழிப்பிடம்',         fam: 'san', occ: 'Rural Development',     mnt: 'Village Panchayat' },
+  { c: 'OHT', en: 'Overhead Water Tank',           ta: 'மேல்நிலைத் தொட்டி',       fam: 'wat', occ: 'TWAD / Panchayat',      mnt: 'TWAD Board' },
+  { c: 'HPM', en: 'Hand Pump / Bore Well',         ta: 'கை பம்பு / ஆழ்துளை',      fam: 'wat', occ: 'Village Panchayat',     mnt: 'Village Panchayat' },
+  { c: 'PND', en: 'Pond / Water Body',             ta: 'குளம் / நீர்நிலை',        fam: 'wat', occ: 'Water Resources',       mnt: 'Water Resources Dept' },
+  { c: 'RD',  en: 'Village Road',                  ta: 'கிராம சாலை',              fam: 'inf', occ: 'Rural Development',     mnt: 'Rural Development (BDO)' },
+  { c: 'STL', en: 'Street Light Line',             ta: 'தெரு விளக்கு',            fam: 'inf', occ: 'Village Panchayat',     mnt: 'Village Panchayat' },
+  { c: 'BUS', en: 'Bus Shelter',                   ta: 'பேருந்து நிழற்குடை',      fam: 'inf', occ: 'Rural Development',     mnt: 'Rural Development (BDO)' },
+  { c: 'BUR', en: 'Burial / Cremation Ground',     ta: 'இடுகாடு',                 fam: 'opn', occ: 'Village Panchayat',     mnt: 'Village Panchayat' },
+  { c: 'PLY', en: 'Playground',                    ta: 'விளையாட்டு மைதானம்',      fam: 'opn', occ: 'Rural Development',     mnt: 'Village Panchayat' }
+];
+const TYPE = Object.fromEntries(TYPES.map(t => [t.c, t]));
+
+/* ---------- inspection checklists, by family ---------- */
+const CHECKLIST = {
+  bld: [
+    ['Structure and foundation', 'கட்டமைப்பு மற்றும் அடித்தளம்'],
+    ['Roof and terrace — leakage', 'கூரை / மொட்டை மாடி — கசிவு'],
+    ['Walls and plaster', 'சுவர் மற்றும் பூச்சு'],
+    ['Flooring', 'தரை'],
+    ['Doors and windows', 'கதவு மற்றும் ஜன்னல்'],
+    ['Staircase and railings', 'படிக்கட்டு மற்றும் கைப்பிடி'],
+    ['Electrical wiring and fittings', 'மின் இணைப்பு மற்றும் பொருத்துகள்'],
+    ['Plumbing and sanitary lines', 'குழாய் மற்றும் கழிவுநீர்'],
+    ['Painting', 'வண்ணப்பூச்சு'],
+    ['Boundary wall and gate', 'சுற்றுச்சுவர் மற்றும் வாயில்'],
+    ['Drinking water', 'குடிநீர்'],
+    ['Toilet — men', 'கழிப்பிடம் — ஆண்'],
+    ['Toilet — women', 'கழிப்பிடம் — பெண்'],
+    ['Toilet — differently-abled', 'கழிப்பிடம் — மாற்றுத்திறனாளி'],
+    ['Electricity and power backup', 'மின்சாரம் மற்றும் மாற்று மின்சாரம்'],
+    ['Ramp and accessibility', 'சாய்வுபாதை மற்றும் அணுகல்'],
+    ['Fire safety equipment', 'தீ பாதுகாப்பு கருவிகள்'],
+    ['Lighting and ventilation', 'வெளிச்சம் மற்றும் காற்றோட்டம்'],
+    ['Seating and furniture', 'இருக்கை மற்றும் மரச்சாமான்'],
+    ['Internet and telephone', 'இணையம் மற்றும் தொலைபேசி']
+  ],
+  san: [
+    ['Structure and roof', 'கட்டமைப்பு மற்றும் கூரை'],
+    ['Doors, latches and privacy', 'கதவு, தாழ்ப்பாள் மற்றும் தனிமை'],
+    ['Water supply to the unit', 'நீர் வழங்கல்'],
+    ['Water storage tank', 'நீர் சேமிப்புத் தொட்டி'],
+    ['Flooring and drainage', 'தரை மற்றும் வடிகால்'],
+    ['Septic tank / soak pit', 'கழிவுநீர் தொட்டி'],
+    ['Lighting inside and outside', 'உள்/வெளி வெளிச்சம்'],
+    ['Ventilation', 'காற்றோட்டம்'],
+    ['Cleanliness and daily upkeep', 'தூய்மை மற்றும் பராமரிப்பு'],
+    ['Separate unit for women', 'பெண்களுக்கு தனி பகுதி'],
+    ['Differently-abled unit and ramp', 'மாற்றுத்திறனாளி பகுதி மற்றும் சாய்வுபாதை'],
+    ['Hand-wash point', 'கை கழுவும் இடம்'],
+    ['Approach path', 'அணுகு பாதை'],
+    ['Caretaker arrangement', 'பராமரிப்பாளர் ஏற்பாடு']
+  ],
+  wat: [
+    ['Structural condition of tank / platform', 'தொட்டி / மேடையின் நிலை'],
+    ['Leakage or seepage', 'கசிவு'],
+    ['Water quality — visual', 'நீரின் தரம் — பார்வை'],
+    ['Chlorination / treatment', 'குளோரினேற்றம்'],
+    ['Pump and motor working', 'பம்ப் மற்றும் மோட்டார்'],
+    ['Electrical connection and panel', 'மின் இணைப்பு மற்றும் பலகை'],
+    ['Pipeline condition', 'குழாய் நிலை'],
+    ['Valve and outlet condition', 'வால்வு மற்றும் வெளியேற்றம்'],
+    ['Fencing and protection', 'வேலி மற்றும் பாதுகாப்பு'],
+    ['Cleaning frequency and last cleaned', 'சுத்தம் செய்த கடைசி தேதி'],
+    ['Signage and capacity board', 'அறிவிப்பு பலகை']
+  ],
+  inf: [
+    ['Surface condition', 'மேற்பரப்பு நிலை'],
+    ['Drainage on both sides', 'இருபுற வடிகால்'],
+    ['Encroachment', 'ஆக்கிரமிப்பு'],
+    ['Culverts and cross drains', 'சிறு பாலம் மற்றும் குறுக்கு வடிகால்'],
+    ['Signage', 'அறிவிப்பு பலகை'],
+    ['Poles and fittings condition', 'கம்பம் மற்றும் பொருத்துகள்'],
+    ['Working lights / functioning units', 'எரியும் விளக்குகள்'],
+    ['Wiring and connections', 'கம்பி மற்றும் இணைப்புகள்'],
+    ['Night functioning verified', 'இரவு செயல்பாடு சரிபார்ப்பு'],
+    ['Safety for pedestrians', 'நடைபயணிகள் பாதுகாப்பு']
+  ],
+  opn: [
+    ['Boundary wall or fencing', 'சுற்றுச்சுவர் / வேலி'],
+    ['Gate and access', 'வாயில் மற்றும் அணுகல்'],
+    ['Approach path', 'அணுகு பாதை'],
+    ['Levelling and surface', 'சமன் மற்றும் மேற்பரப்பு'],
+    ['Drainage and water logging', 'வடிகால் மற்றும் நீர் தேக்கம்'],
+    ['Lighting', 'வெளிச்சம்'],
+    ['Water point', 'நீர் வசதி'],
+    ['Encroachment', 'ஆக்கிரமிப்பு'],
+    ['Shelter / shed condition', 'நிழற்குடை நிலை'],
+    ['Cleanliness and upkeep', 'தூய்மை மற்றும் பராமரிப்பு']
+  ]
+};
+
+/* ---------- rating scale ---------- */
+const RATINGS = [
+  { k: 0, en: 'Good',           ta: 'நல்லது',      short: 'Good',  cls: 'r-good' },
+  { k: 1, en: 'Satisfactory',   ta: 'திருப்திகரம்', short: 'Satis.', cls: 'r-sat' },
+  { k: 2, en: 'Needs attention', ta: 'கவனம் தேவை',  short: 'Needs', cls: 'r-needs' },
+  { k: 3, en: 'Critical',       ta: 'மோசம்',       short: 'Critical', cls: 'r-crit' },
+  { k: 4, en: 'Not applicable', ta: 'பொருந்தாது',  short: 'N/A',   cls: 'r-na' }
+];
+
+/* ---------- severity bands ---------- */
+const SEVERITY = [
+  { k: 'VC', en: 'Very critical',      ta: 'மிக அவசரம்', sla: 2,  cls: 's-vc', icon: '⛔' },
+  { k: 'CR', en: 'Critical',           ta: 'அவசரம்',     sla: 5,  cls: 's-cr', icon: '▲' },
+  { k: 'MS', en: 'Moderately severe',  ta: 'மிதமானது',   sla: 10, cls: 's-ms', icon: '●' },
+  { k: 'LS', en: 'Less severe',        ta: 'குறைவானது',  sla: 20, cls: 's-ls', icon: '○' }
+];
+const SEV = Object.fromEntries(SEVERITY.map(s => [s.k, s]));
+
+const GRV_STATUS = ['Open', 'Assigned', 'In progress', 'Attended', 'Closed', 'Reopened'];
+
+const CATEGORIES = [
+  'Structural safety', 'Water supply', 'Sanitation and toilets', 'Electricity and lighting',
+  'Roads and drainage', 'Accessibility', 'Fire safety', 'Cleanliness and upkeep',
+  'Encroachment', 'Furniture and equipment', 'Other'
+];
+
+const DEPARTMENTS = [
+  'Village Panchayat', 'Rural Development (BDO)', 'School Education', 'Public Works Department',
+  'TWAD Board', 'Social Welfare', 'Water Resources Dept', 'Co-operatives',
+  'Public Libraries', 'Adi Dravidar Welfare', 'Health'
+];
+
+const OWNERSHIP = ['Government owned', 'Rented', 'Local body', 'Private premises in use', 'Other'];
+const FUNCTIONAL = ['In use', 'Partly used', 'Unused', 'Abandoned', 'Under construction'];
+
+/* ---------- demo hierarchy (one block) ---------- */
+const BLOCK = 'Manachanallur';
+const VILLAGES = [
+  { n: 'Ma. Puthur',       habs: ['Ma. Puthur (Main)', 'Kottapatti Colony', 'Melapatti', 'Vadakku Thottam', 'Anaikattu Pudur', 'Chinna Ma. Puthur', 'Odai Karai'] },
+  { n: 'Somarasampettai',  habs: ['Somarasampettai (Main)', 'Kizhakku Theru', 'Pallakadu', 'Puthu Nagar', 'Sathamangalam Pudur', 'Karuppur Kadu'] },
+  { n: 'Pichandarkovil',   habs: ['Pichandarkovil (Main)', 'Ayyampatti', 'Vengur', 'Thottiyapatti', 'Mela Colony'] },
+  { n: 'Kallakudi',        habs: ['Kallakudi (Main)', 'Kambarasampettai', 'Nagar Extension', 'Ariyamangalam Pudur'] }
+];
+const ALL_HABS = VILLAGES.flatMap(v => v.habs.map(h => ({ hab: h, vill: v.n })));
+
+/* ---------- roles ---------- */
+const ROLES = [
+  { k: 'officer',   en: 'Field Officer',        ta: 'கள அலுவலர்' },
+  { k: 'volunteer', en: 'Volunteer',            ta: 'தன்னார்வலர்' },
+  { k: 'dept',      en: 'Maintenance Dept',     ta: 'பராமரிப்புத் துறை' },
+  { k: 'collector', en: 'Collector Dashboard',  ta: 'ஆட்சியர் டாஷ்போர்டு' }
+];
+
+/* ---------- geo-fence and photo settings (configurable) ---------- */
+const SETTINGS = {
+  fenceMetres: 100,
+  duplicateMetres: 50,
+  photoMaxEdge: 1600,
+  photoTargetKB: 300,
+  minAssetPhotos: 3,
+  centre: { lat: 10.9, lng: 78.75 }   // used only when the browser refuses location
+};
+
+/* ---------- interface strings ---------- */
+const STRINGS = {
+  en: {
+    login: 'Login', mobile: 'Registered mobile number', otp: 'One-time password',
+    verify: 'Verify and continue', allotment: 'My allotment', villages: 'My villages',
+    habitations: 'habitations', assets: 'assets', inspections: 'inspections',
+    grievances: 'grievances', pending: 'pending', inspected: 'inspected',
+    notEnumerated: 'Not enumerated', inspectionPending: 'Inspection pending',
+    startEnum: 'Start enumeration', addAsset: 'Register a new asset',
+    noAssets: 'No assets recorded here yet',
+    noAssetsHelp: 'Enumeration has not started in this habitation. Every asset in the register begins as an entry made here, in the field.',
+    nilReturn: 'No public asset in this habitation',
+    inspectNow: 'Inspect now', navigate: 'Navigate to this asset',
+    inspHistory: 'Inspection history', notInspected: 'Not inspected yet',
+    beginChecklist: 'Begin checklist', submit: 'Save and submit',
+    reviewSubmit: 'Review and submit', cancel: 'Cancel',
+    capture: 'Capture location', photos: 'Photographs', takePhoto: 'Take photo',
+    remark: 'Observation', severity: 'Severity', report: 'Report a problem',
+    myReports: 'My reports', queue: 'Priority queue', attend: 'Mark as attended',
+    close: 'Satisfied — close', reject: 'Not satisfied — return with reason',
+    sync: 'Sync', feedback: 'Feedback', export: 'Export data', reset: 'Reset trial data'
+  },
+  ta: {
+    login: 'உள்நுழைவு', mobile: 'பதிவு செய்யப்பட்ட கைபேசி எண்', otp: 'ஒரு முறை கடவுச்சொல்',
+    verify: 'சரிபார்த்து தொடரவும்', allotment: 'என் ஒதுக்கீடு', villages: 'என் கிராமங்கள்',
+    habitations: 'குடியிருப்புகள்', assets: 'சொத்துகள்', inspections: 'ஆய்வுகள்',
+    grievances: 'குறைகள்', pending: 'நிலுவை', inspected: 'ஆய்வு முடிந்தது',
+    notEnumerated: 'கணக்கெடுப்பு இல்லை', inspectionPending: 'ஆய்வு நிலுவை',
+    startEnum: 'கணக்கெடுப்பைத் தொடங்கு', addAsset: 'புதிய சொத்து பதிவு',
+    noAssets: 'இங்கு இதுவரை சொத்து பதிவாகவில்லை',
+    noAssetsHelp: 'இந்த குடியிருப்பில் கணக்கெடுப்பு தொடங்கவில்லை. ஒவ்வொரு சொத்தும் களத்தில் பதிவு செய்யப்படுகிறது.',
+    nilReturn: 'இங்கு பொது சொத்து இல்லை',
+    inspectNow: 'இப்போது ஆய்வு செய்', navigate: 'இந்த சொத்துக்கு வழிகாட்டு',
+    inspHistory: 'ஆய்வு வரலாறு', notInspected: 'இதுவரை ஆய்வு இல்லை',
+    beginChecklist: 'பட்டியலைத் தொடங்கு', submit: 'சேமித்து சமர்ப்பி',
+    reviewSubmit: 'சரிபார்த்து சமர்ப்பி', cancel: 'ரத்து',
+    capture: 'இருப்பிடம் பதிவு', photos: 'புகைப்படங்கள்', takePhoto: 'படம் எடு',
+    remark: 'கருத்து', severity: 'தீவிரம்', report: 'பிரச்சினையைத் தெரிவி',
+    myReports: 'என் புகார்கள்', queue: 'முன்னுரிமை பட்டியல்', attend: 'சரிசெய்யப்பட்டது எனக் குறி',
+    close: 'திருப்தி — மூடு', reject: 'திருப்தி இல்லை — திருப்பு',
+    sync: 'ஒத்திசைவு', feedback: 'கருத்து', export: 'தரவு ஏற்றுமதி', reset: 'சோதனை தரவை அழி'
+  }
+};
+
+
+/* ===== store.js ===== */
+/* ============================================================
+   store.js — local persistence for the trial
+   Records live in localStorage; photographs live in IndexedDB
+   because they are far too large for localStorage.
+   Nothing leaves the device. There is no server.
+   ============================================================ */
+
+
+
+const KEY = 'trichy-asset-trial-v1';
+
+/* ---------------- IndexedDB for photographs ---------------- */
+let _db = null;
+function idb() {
+  if (_db) return Promise.resolve(_db);
+  return new Promise((res, rej) => {
+    const r = indexedDB.open('trichy-photos', 1);
+    r.onupgradeneeded = () => r.result.createObjectStore('photos');
+    r.onsuccess = () => { _db = r.result; res(_db); };
+    r.onerror = () => rej(r.error);
+  });
+}
+const Photos = {
+  async put(id, blob) {
+    const db = await idb();
+    return new Promise((res, rej) => {
+      const tx = db.transaction('photos', 'readwrite');
+      tx.objectStore('photos').put(blob, id);
+      tx.oncomplete = () => res(id); tx.onerror = () => rej(tx.error);
+    });
+  },
+  async get(id) {
+    const db = await idb();
+    return new Promise((res, rej) => {
+      const tx = db.transaction('photos', 'readonly');
+      const q = tx.objectStore('photos').get(id);
+      q.onsuccess = () => res(q.result || null); q.onerror = () => rej(q.error);
+    });
+  },
+  async url(id) { const b = await this.get(id); return b ? URL.createObjectURL(b) : null; },
+  async clear() {
+    const db = await idb();
+    return new Promise(res => {
+      const tx = db.transaction('photos', 'readwrite');
+      tx.objectStore('photos').clear(); tx.oncomplete = res;
+    });
+  }
+};
+
+/* ---------------- state ---------------- */
+const EMPTY = {
+  profile: { name: '', mobile: '', role: 'officer', dept: 'Village Panchayat', hab: 'Melapatti' },
+  settings: { lang: 'en', fence: SETTINGS.fenceMetres },
+  assets: [], inspections: [], grievances: [], nilReturns: [], feedback: [],
+  seq: { A: 0, I: 0, G: 0, F: 0 },
+  meta: { started: null, lastExport: null }
+};
+
+const State = {
+  data: structuredClone(EMPTY),
+
+  load() {
+    try {
+      const raw = localStorage.getItem(KEY);
+      if (raw) this.data = Object.assign(structuredClone(EMPTY), JSON.parse(raw));
+    } catch (e) { console.warn('Could not read saved data', e); }
+    if (!this.data.meta.started) this.data.meta.started = new Date().toISOString();
+    return this.data;
+  },
+  save() {
+    try { localStorage.setItem(KEY, JSON.stringify(this.data)); }
+    catch (e) {
+      alert('The device is out of storage space for this trial. Export your data and then reset.');
+      console.error(e);
+    }
+  },
+  async reset() {
+    await Photos.clear();
+    localStorage.removeItem(KEY);
+    this.data = structuredClone(EMPTY);
+    this.data.meta.started = new Date().toISOString();
+    this.save();
+  },
+
+  id(prefix) {
+    this.data.seq[prefix] = (this.data.seq[prefix] || 0) + 1;
+    return prefix + String(this.data.seq[prefix]).padStart(4, '0');
+  },
+
+  /* ---------- assets ---------- */
+  addAsset(a) {
+    a.id = this.id('A');
+    a.code = assetCode(a);
+    a.createdOn = new Date().toISOString();
+    a.createdBy = this.data.profile.name || 'Trial user';
+    a.condition = null;
+    this.data.assets.push(a);
+    this.save();
+    return a;
+  },
+  asset(id) { return this.data.assets.find(a => a.id === id); },
+  assetsIn(hab) { return this.data.assets.filter(a => a.hab === hab); },
+
+  /* ---------- inspections ---------- */
+  addInspection(rec) {
+    rec.id = this.id('I');
+    rec.on = new Date().toISOString();
+    rec.by = this.data.profile.name || 'Trial user';
+    this.data.inspections.push(rec);
+    const a = this.asset(rec.assetId);
+    if (a) { a.condition = rec.overall; a.lastInspected = rec.on; }
+    this.save();
+    return rec;
+  },
+  inspectionsFor(assetId) { return this.data.inspections.filter(i => i.assetId === assetId); },
+
+  /* ---------- grievances ---------- */
+  addGrievance(g) {
+    g.id = this.id('G');
+    g.raisedOn = new Date().toISOString();
+    g.status = 'Open';
+    g.history = [{ at: g.raisedOn, by: g.raisedBy, what: 'Raised' }];
+    const sev = SEV[g.sev];
+    g.dueOn = new Date(Date.now() + sev.sla * 864e5).toISOString();
+    this.data.grievances.push(g);
+    this.save();
+    return g;
+  },
+  grievance(id) { return this.data.grievances.find(g => g.id === id); },
+  updateGrievance(id, patch, note) {
+    const g = this.grievance(id); if (!g) return null;
+    Object.assign(g, patch);
+    if (note) g.history.push({ at: new Date().toISOString(), by: this.data.profile.name || 'Trial user', what: note });
+    this.save(); return g;
+  },
+  openGrievances() { return this.data.grievances.filter(g => g.status !== 'Closed'); },
+  overdue(g) {
+    return g.status !== 'Closed' && g.status !== 'Attended' && new Date(g.dueOn) < new Date();
+  },
+  ageDays(g) { return Math.max(0, Math.floor((Date.now() - new Date(g.raisedOn)) / 864e5)); },
+
+  /* ---------- nil returns ---------- */
+  addNilReturn(hab) {
+    if (!this.data.nilReturns.includes(hab)) this.data.nilReturns.push(hab);
+    this.save();
+  },
+
+  /* ---------- feedback ---------- */
+  addFeedback(f) {
+    f.id = this.id('F');
+    f.on = new Date().toISOString();
+    f.by = this.data.profile.name || 'Trial user';
+    f.mobile = this.data.profile.mobile || '';
+    f.ua = navigator.userAgent;
+    this.data.feedback.push(f);
+    this.save(); return f;
+  },
+
+  /* ---------- coverage helpers ---------- */
+  habStatus(hab) {
+    const n = this.assetsIn(hab).length;
+    if (this.data.nilReturns.includes(hab)) return { state: 'nil', assets: 0 };
+    if (!n) return { state: 'new', assets: 0 };
+    const inspected = this.assetsIn(hab).some(a => a.lastInspected);
+    return { state: inspected ? 'done' : 'pend', assets: n };
+  },
+  coverage() {
+    let enumerated = 0, inspected = 0;
+    ALL_HABS.forEach(({ hab }) => {
+      const s = this.habStatus(hab);
+      if (s.state === 'done' || s.state === 'pend' || s.state === 'nil') enumerated++;
+      if (s.state === 'done' || s.state === 'nil') inspected++;
+    });
+    return { total: ALL_HABS.length, enumerated, inspected };
+  }
+};
+
+function assetCode(a) {
+  const v = (a.vill || 'XXX').replace(/[^A-Za-z]/g, '').slice(0, 3).toUpperCase();
+  return `TRY/MNC/${v}/${a.type}/${String(State.data.seq.A).padStart(3, '0')}`;
+}
+
+/* ============================================================
+   Location — real GPS, with an honest fallback
+   ============================================================ */
+function getLocation(opts = {}) {
+  return new Promise(resolve => {
+    if (!navigator.geolocation) {
+      return resolve({ ok: false, reason: 'This browser does not provide location.' });
+    }
+    const timer = setTimeout(() => resolve({ ok: false, reason: 'Location took too long. Move into the open and try again.' }), opts.timeout || 15000);
+    navigator.geolocation.getCurrentPosition(
+      p => {
+        clearTimeout(timer);
+        resolve({
+          ok: true,
+          lat: +p.coords.latitude.toFixed(6),
+          lng: +p.coords.longitude.toFixed(6),
+          acc: Math.round(p.coords.accuracy),
+          at: new Date().toISOString()
+        });
+      },
+      err => {
+        clearTimeout(timer);
+        const msg = err.code === 1
+          ? 'Location permission was refused. The trial needs it to record where an asset is.'
+          : 'Location is not available right now. Move into the open and try again.';
+        resolve({ ok: false, reason: msg });
+      },
+      { enableHighAccuracy: true, timeout: opts.timeout || 15000, maximumAge: 0 }
+    );
+  });
+}
+
+function distanceMetres(a, b) {
+  if (!a || !b) return null;
+  const R = 6371000, rad = x => x * Math.PI / 180;
+  const dLat = rad(b.lat - a.lat), dLng = rad(b.lng - a.lng);
+  const s = Math.sin(dLat / 2) ** 2 + Math.cos(rad(a.lat)) * Math.cos(rad(b.lat)) * Math.sin(dLng / 2) ** 2;
+  return Math.round(2 * R * Math.asin(Math.sqrt(s)));
+}
+
+/* ============================================================
+   Photographs — capture, compress, stamp
+   ============================================================ */
+async function processPhoto(file, stamp) {
+  const bitmap = await createImageBitmap(file);
+  const max = SETTINGS.photoMaxEdge;
+  const scale = Math.min(1, max / Math.max(bitmap.width, bitmap.height));
+  const w = Math.round(bitmap.width * scale), h = Math.round(bitmap.height * scale);
+  const cv = document.createElement('canvas');
+  cv.width = w; cv.height = h;
+  const cx = cv.getContext('2d');
+  cx.drawImage(bitmap, 0, 0, w, h);
+
+  // burn the stamp in, so a photograph separated from the record still carries it
+  const lines = (stamp || []).filter(Boolean);
+  if (lines.length) {
+    const fs = Math.max(11, Math.round(w / 46));
+    const pad = Math.round(fs * 0.5);
+    const boxH = lines.length * (fs + 4) + pad * 2;
+    cx.fillStyle = 'rgba(0,0,0,0.6)';
+    cx.fillRect(0, h - boxH, w, boxH);
+    cx.fillStyle = '#fff';
+    cx.font = `${fs}px sans-serif`;
+    cx.textBaseline = 'top';
+    lines.forEach((l, i) => cx.fillText(l, pad, h - boxH + pad + i * (fs + 4)));
+  }
+
+  let quality = 0.72, blob = null;
+  for (let i = 0; i < 5; i++) {
+    blob = await new Promise(r => cv.toBlob(r, 'image/jpeg', quality));
+    if (blob.size / 1024 <= SETTINGS.photoTargetKB) break;
+    quality -= 0.12;
+  }
+  const id = 'P' + Date.now().toString(36) + Math.floor(performance.now() * 1000).toString(36);
+  await Photos.put(id, blob);
+  return { id, kb: Math.round(blob.size / 1024), w, h, originalKB: Math.round(file.size / 1024) };
+}
+
+/* ============================================================
+   Export — the trial's only way of collecting results
+   ============================================================ */
+function exportJSON() {
+  const payload = {
+    exportedAt: new Date().toISOString(),
+    app: 'trichy-asset-trial',
+    profile: State.data.profile,
+    counts: {
+      assets: State.data.assets.length,
+      inspections: State.data.inspections.length,
+      grievances: State.data.grievances.length,
+      feedback: State.data.feedback.length
+    },
+    assets: State.data.assets,
+    inspections: State.data.inspections,
+    grievances: State.data.grievances,
+    nilReturns: State.data.nilReturns,
+    feedback: State.data.feedback
+  };
+  download(JSON.stringify(payload, null, 2), `trial-data-${stampName()}.json`, 'application/json');
+  State.data.meta.lastExport = new Date().toISOString(); State.save();
+}
+
+function exportCSV(entity) {
+  const rows = {
+    assets: () => State.data.assets.map(a => ({
+      id: a.id, code: a.code, type: a.type, typeName: TYPE[a.type] ? TYPE[a.type].en : '',
+      name: a.name, block: a.block, village: a.vill, habitation: a.hab,
+      ownership: a.own, occupied: a.occ, maintenance: a.mnt, status: a.functional,
+      lat: a.loc ? a.loc.lat : '', lng: a.loc ? a.loc.lng : '', gpsAccuracy: a.loc ? a.loc.acc : '',
+      photos: (a.photos || []).length, condition: a.condition, lastInspected: a.lastInspected || '',
+      createdBy: a.createdBy, createdOn: a.createdOn
+    })),
+    inspections: () => State.data.inspections.map(i => ({
+      id: i.id, assetId: i.assetId, assetCode: (State.asset(i.assetId) || {}).code || '',
+      by: i.by, on: i.on, minutes: i.minutes, overall: i.overall,
+      insideFence: i.fenceOK, distanceM: i.distance, grievances: (i.grievanceIds || []).length,
+      lat: i.loc ? i.loc.lat : '', lng: i.loc ? i.loc.lng : '', gpsAccuracy: i.loc ? i.loc.acc : ''
+    })),
+    grievances: () => State.data.grievances.map(g => ({
+      id: g.id, assetId: g.assetId || '', habitation: g.hab, category: g.category,
+      severity: SEV[g.sev] ? SEV[g.sev].en : g.sev, slaDays: SEV[g.sev] ? SEV[g.sev].sla : '',
+      status: g.status, department: g.dept, source: g.source,
+      raisedBy: g.raisedBy, raisedOn: g.raisedOn, dueOn: g.dueOn,
+      ageDays: State.ageDays(g), overdue: State.overdue(g) ? 'Yes' : 'No',
+      description: g.desc
+    })),
+    feedback: () => State.data.feedback.map(f => ({
+      id: f.id, on: f.on, by: f.by, screen: f.screen, verdict: f.verdict,
+      comment: f.comment, device: f.ua
+    }))
+  }[entity]();
+
+  if (!rows.length) { alert('There is nothing to export yet in ' + entity + '.'); return; }
+  const cols = Object.keys(rows[0]);
+  const esc = v => {
+    const s = v === null || v === undefined ? '' : String(v);
+    return /[",\n]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s;
+  };
+  const csv = [cols.join(','), ...rows.map(r => cols.map(c => esc(r[c])).join(','))].join('\n');
+  download('﻿' + csv, `${entity}-${stampName()}.csv`, 'text/csv');
+}
+
+function stampName() {
+  const d = new Date();
+  const p = n => String(n).padStart(2, '0');
+  return `${d.getFullYear()}${p(d.getMonth() + 1)}${p(d.getDate())}-${p(d.getHours())}${p(d.getMinutes())}`;
+}
+
+function download(text, filename, mime) {
+  const blob = new Blob([text], { type: mime });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = filename;
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 2000);
+}
+
+function mapsLink(loc) {
+  if (!loc) return '#';
+  return `https://www.google.com/maps/dir/?api=1&destination=${loc.lat}%2C${loc.lng}&dir_action=navigate`;
+}
+
+
+/* ===== ui.js ===== */
+/* ============================================================
+   ui.js — small helpers shared by every screen
+   ============================================================ */
+
+
+
+const lang = () => State.data.settings.lang || 'en';
+const t = k => (STRINGS[lang()] && STRINGS[lang()][k]) || STRINGS.en[k] || k;
+const L = (en, ta) => (lang() === 'ta' ? ta : en);
+const typeName = c => (TYPE[c] ? L(TYPE[c].en, TYPE[c].ta) : c);
+
+function esc(s) {
+  return String(s === null || s === undefined ? '' : s)
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+}
+
+function fmtDate(iso) {
+  if (!iso) return '';
+  const d = new Date(iso);
+  const m = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  return `${d.getDate()} ${m[d.getMonth()]} ${d.getFullYear()}`;
+}
+function fmtDateTime(iso) {
+  if (!iso) return '';
+  const d = new Date(iso);
+  const p = n => String(n).padStart(2, '0');
+  return `${fmtDate(iso)}, ${p(d.getHours())}:${p(d.getMinutes())}`;
+}
+
+function toast(msg, kind = 'ok') {
+  const el = document.createElement('div');
+  el.className = 'toast toast-' + kind;
+  el.textContent = msg;
+  document.body.appendChild(el);
+  requestAnimationFrame(() => el.classList.add('in'));
+  setTimeout(() => { el.classList.remove('in'); setTimeout(() => el.remove(), 300); }, 3200);
+}
+
+function confirmBox(message, onYes, yesLabel) {
+  const host = document.getElementById('modal-host');
+  host.innerHTML = `<div class="modal-bg">
+    <div class="modal-box">
+      <p style="margin:0 0 14px">${esc(message)}</p>
+      <div class="modal-actions">
+        <button class="btn btn-grey" data-no>${L('Cancel','ரத்து')}</button>
+        <button class="btn" data-yes>${esc(yesLabel || L('Yes','ஆம்'))}</button>
+      </div>
+    </div></div>`;
+  host.querySelector('[data-no]').onclick = () => host.innerHTML = '';
+  host.querySelector('[data-yes]').onclick = () => { host.innerHTML = ''; onYes(); };
+}
+
+function sheet(title, innerHTML) {
+  const host = document.getElementById('modal-host');
+  host.innerHTML = `<div class="modal-bg">
+    <div class="modal-box">
+      <div class="modal-head"><b>${esc(title)}</b><button class="x" data-x>&times;</button></div>
+      <div class="modal-body">${innerHTML}</div>
+    </div></div>`;
+  host.querySelector('[data-x]').onclick = () => host.innerHTML = '';
+  return host.querySelector('.modal-body');
+}
+function closeSheet() { document.getElementById('modal-host').innerHTML = ''; }
+
+/* ---------- badges ---------- */
+function condBadge(c) {
+  if (c === null || c === undefined) return `<span class="tag">${L('Not inspected','ஆய்வு இல்லை')}</span>`;
+  const r = RATINGS[c];
+  return `<span class="tag ${r.cls}">● ${L(r.en, r.ta)}</span>`;
+}
+function sevBadge(k) {
+  const s = SEV[k]; if (!s) return '';
+  return `<span class="tag ${s.cls}">${s.icon} ${L(s.en, s.ta)}</span>`;
+}
+
+/* ---------- photographs ---------- */
+async function paintPhotos(root) {
+  const nodes = root.querySelectorAll('[data-photo]');
+  for (const n of nodes) {
+    const url = await Photos.url(n.dataset.photo);
+    if (url) {
+      n.style.backgroundImage = `url(${url})`;
+      n.classList.add('has-img');
+      n.textContent = '';
+    }
+  }
+}
+
+/* ---------- a labelled camera input ---------- */
+function photoSlot(id, label, existing) {
+  if (existing) {
+    return `<div class="photo has-img" data-photo="${esc(existing.id)}" title="${existing.kb} KB"></div>`;
+  }
+  return `<label class="photo" for="${id}">
+      <span class="ic">＋</span><span>${esc(label)}</span>
+      <input type="file" id="${id}" accept="image/*" capture="environment" hidden>
+    </label>`;
+}
+
+/* ---------- generic list card ---------- */
+function card(opts) {
+  const { title, sub, meta, right, href, cls } = opts;
+  const tag = href ? 'a' : 'div';
+  const attr = href ? ` href="${href}"` : '';
+  return `<${tag} class="card ${href ? 'tap' : ''} ${cls || ''}"${attr}>
+    <div class="row">
+      <div class="grow">
+        <div class="t1">${title}</div>
+        ${sub ? `<div class="t2">${sub}</div>` : ''}
+        ${meta ? `<div class="tiny">${meta}</div>` : ''}
+      </div>
+      ${right || '<span class="chev">›</span>'}
+    </div></${tag}>`;
+}
+
+function empty(icon, title, help, actionHTML) {
+  return `<div class="empty"><div class="big">${icon}</div>
+    <div class="t1">${esc(title)}</div>
+    ${help ? `<div class="t2">${esc(help)}</div>` : ''}
+    ${actionHTML || ''}</div>`;
+}
+
+function progress(pct) {
+  return `<div class="progress"><i style="width:${Math.max(0, Math.min(100, pct))}%"></i></div>`;
+}
+
+
+/* ===== screens.js ===== */
+/* ============================================================
+   screens.js — Field Officer, Volunteer and Maintenance Department
+   ============================================================ */
+
+
+
+
+const nav = h => { location.hash = h; };
+let draft = {};   // working state for multi-step forms
+
+/* ============================================================
+   LOGIN
+   ============================================================ */
+const login = {
+  title: () => t('login'),
+  sub: () => `${BLOCK} block, ${'Tiruchirappalli'}`,
+  chrome: false,
+  html: () => `
+    <div class="hero">
+      <div class="logo">◎</div>
+      <h2>${L('Asset & Inspection', 'சொத்து & ஆய்வு')}</h2>
+      <p>${L('District Administration, Tiruchirappalli', 'மாவட்ட நிர்வாகம், திருச்சிராப்பள்ளி')}</p>
+    </div>
+    <div class="card">
+      <div class="alert alert-info">
+        <span>ⓘ</span><span>${L(
+          'This is a trial version. Any name and any six digits will let you in — there is no real login and no server.',
+          'இது ஒரு சோதனை பதிப்பு. எந்த பெயரும் ஆறு இலக்கங்களும் போதும் — உண்மையான உள்நுழைவு இல்லை.')}</span>
+      </div>
+      <label class="f">${L('Your name', 'உங்கள் பெயர்')}</label>
+      <input class="f" id="li-name" placeholder="${L('For the trial record', 'சோதனைப் பதிவிற்கு')}">
+      <label class="f">${t('mobile')}</label>
+      <input class="f" id="li-mob" inputmode="numeric" placeholder="9xxxxxxxxx">
+      <label class="f">${t('otp')}</label>
+      <input class="f" id="li-otp" inputmode="numeric" placeholder="${L('Any six digits', 'எந்த ஆறு இலக்கங்களும்')}">
+      <button class="btn" id="li-go">${t('verify')}</button>
+    </div>`,
+  mount(root) {
+    const p = State.data.profile;
+    root.querySelector('#li-name').value = p.name || '';
+    root.querySelector('#li-mob').value = p.mobile || '';
+    root.querySelector('#li-go').onclick = () => {
+      p.name = root.querySelector('#li-name').value.trim() || 'Trial user';
+      p.mobile = root.querySelector('#li-mob').value.trim();
+      State.save();
+      nav('#/home');
+    };
+  }
+};
+
+/* ============================================================
+   OFFICER — home
+   ============================================================ */
+const home = {
+  title: () => t('allotment'),
+  sub: () => `${State.data.profile.name || 'Trial user'} — ${BLOCK}`,
+  tab: 'home',
+  html() {
+    const c = State.coverage();
+    const pct = Math.round(c.inspected / c.total * 100);
+    const g = State.openGrievances();
+    const toVerify = State.data.grievances.filter(x => x.status === 'Attended').length;
+    return `
+      ${c.enumerated === 0 ? `<div class="alert alert-warn"><span>◔</span><span>
+        <b>${L('Day 0.', 'நாள் 0.')}</b> ${L(
+          'Nothing has been recorded yet. Your first task is enumeration, not inspection.',
+          'இதுவரை எதுவும் பதிவாகவில்லை. முதல் பணி கணக்கெடுப்பு.')}</span></div>` : ''}
+      <div class="card">
+        <div class="row">
+          <div class="grow">
+            <div class="t1">${L('Cycle 1', 'சுழற்சி 1')}</div>
+            <div class="t2">${c.enumerated}/${c.total} ${L('habitations enumerated', 'கணக்கெடுக்கப்பட்டது')}
+              · ${c.inspected} ${t('inspected')}</div>
+            ${progress(pct)}
+          </div>
+          <div class="ring">${pct}%</div>
+        </div>
+      </div>
+      <div class="grid3">
+        <a class="card mini" href="#/assets"><b>${State.data.assets.length}</b><span>${t('assets')}</span></a>
+        <a class="card mini" href="#/inspections"><b>${State.data.inspections.length}</b><span>${t('inspections')}</span></a>
+        <a class="card mini" href="#/grievances"><b class="red">${g.length}</b><span>${t('grievances')}</span></a>
+      </div>
+      ${toVerify ? `<div class="alert alert-warn"><span>⚠</span><span><b>${toVerify}</b>
+        ${L('waiting for your verification.', 'உங்கள் சரிபார்ப்புக்காக காத்திருக்கிறது.')}</span></div>` : ''}
+      <h3 class="sec">${t('villages')}</h3>
+      ${VILLAGES.map(v => {
+        const done = v.habs.filter(h => ['done', 'nil'].includes(State.habStatus(h).state)).length;
+        const en = v.habs.filter(h => State.habStatus(h).state !== 'new').length;
+        return card({
+          title: esc(v.n),
+          sub: `${v.habs.length} ${t('habitations')} · ${en} ${L('enumerated', 'கணக்கெடுப்பு')} · ${done} ${t('inspected')}`,
+          right: `<span class="chev">›</span>`,
+          href: `#/village/${encodeURIComponent(v.n)}`
+        }) + '';
+      }).join('')}`;
+  }
+};
+
+/* ============================================================
+   OFFICER — village → habitations
+   ============================================================ */
+const village = {
+  title: () => decodeURIComponent(location.hash.split('/')[2] || ''),
+  sub: () => L('Every habitation opens, whatever its status', 'ஒவ்வொரு குடியிருப்பும் திறக்கும்'),
+  tab: 'home',
+  html() {
+    const name = decodeURIComponent(location.hash.split('/')[2]);
+    const v = VILLAGES.find(x => x.n === name);
+    if (!v) return empty('?', L('Village not found', 'கிராமம் இல்லை'));
+    return v.habs.map(h => {
+      const s = State.habStatus(h);
+      const tags = {
+        done: `<span class="tag r-good">✓ ${t('inspected')}</span>`,
+        pend: `<span class="tag r-needs">● ${t('inspectionPending')}</span>`,
+        nil:  `<span class="tag">◌ ${L('Nil return', 'சொத்து இல்லை')}</span>`,
+        new:  `<span class="tag r-crit">○ ${t('notEnumerated')}</span>`
+      };
+      return card({
+        title: esc(h),
+        sub: s.assets ? `${s.assets} ${t('assets')}` : L('No assets recorded yet', 'சொத்து பதிவு இல்லை'),
+        right: tags[s.state],
+        href: `#/hab/${encodeURIComponent(h)}`
+      });
+    }).join('');
+  }
+};
+
+/* ============================================================
+   OFFICER — habitation
+   ============================================================ */
+const hab = {
+  title: () => decodeURIComponent(location.hash.split('/')[2] || ''),
+  sub() {
+    const h = decodeURIComponent(location.hash.split('/')[2]);
+    const rec = ALL_HABS.find(x => x.hab === h);
+    return rec ? rec.vill + ' VP' : '';
+  },
+  tab: 'home',
+  html() {
+    const h = decodeURIComponent(location.hash.split('/')[2]);
+    const list = State.assetsIn(h);
+    if (!list.length) {
+      return empty('◇', t('noAssets'), t('noAssetsHelp'),
+        `<button class="btn" id="h-add">＋ ${t('startEnum')}</button>
+         <button class="btn btn-ghost" id="h-nil">${t('nilReturn')}</button>`);
+    }
+    const byFam = {};
+    list.forEach(a => { const f = TYPE[a.type].fam; (byFam[f] = byFam[f] || []).push(a); });
+    const FAMN = { bld: L('Buildings','கட்டிடங்கள்'), san: L('Sanitation','துப்புரவு'), wat: L('Water','நீர்'),
+                   inf: L('Roads and street','சாலை & தெரு'), opn: L('Open spaces','திறந்தவெளி') };
+    return Object.entries(byFam).map(([f, arr]) => `
+      <h3 class="sec">${FAMN[f]}</h3>
+      ${arr.map(a => card({
+        title: esc(typeName(a.type)),
+        sub: esc(a.name),
+        meta: `<span class="mono">${esc(a.code)}</span>`,
+        right: `<div class="tright">${condBadge(a.condition)}
+          <div class="tiny">${State.inspectionsFor(a.id).length} ${t('inspections')}</div></div>`,
+        href: `#/asset/${a.id}`
+      })).join('')}`).join('')
+      + `<button class="btn" id="h-add">＋ ${t('addAsset')}</button>`;
+  },
+  mount(root) {
+    const h = decodeURIComponent(location.hash.split('/')[2]);
+    const add = root.querySelector('#h-add');
+    if (add) add.onclick = () => nav(`#/new/${encodeURIComponent(h)}`);
+    const nil = root.querySelector('#h-nil');
+    if (nil) nil.onclick = () => confirmBox(
+      L('Record that this habitation has no public asset? A supervisor will see this as a nil return.',
+        'இந்த குடியிருப்பில் பொது சொத்து இல்லை எனப் பதிவு செய்யவா?'),
+      () => { State.addNilReturn(h); toast(L('Nil return recorded.', 'பதிவு செய்யப்பட்டது.')); nav(`#/village/${encodeURIComponent(ALL_HABS.find(x => x.hab === h).vill)}`); });
+  }
+};
+
+/* ============================================================
+   OFFICER — register a new asset  (real GPS, real camera)
+   ============================================================ */
+const newAsset = {
+  title: () => L('Register asset', 'சொத்து பதிவு'),
+  sub: () => decodeURIComponent(location.hash.split('/')[2] || ''),
+  tab: 'home',
+  html() {
+    const h = decodeURIComponent(location.hash.split('/')[2]);
+    draft = { hab: h, vill: (ALL_HABS.find(x => x.hab === h) || {}).vill, photos: [], loc: null };
+    return `
+      <div id="loc-box" class="alert alert-info">
+        <span>◉</span><span>${L('Location not captured yet.', 'இருப்பிடம் இன்னும் பதிவாகவில்லை.')}</span>
+      </div>
+      <button class="btn btn-ghost" id="loc-btn">◉ ${t('capture')}</button>
+      <div id="dupe"></div>
+      <div class="card">
+        <label class="f">${L('Asset type', 'சொத்து வகை')} *</label>
+        <select class="f" id="a-type">${TYPES.map(x => `<option value="${x.c}">${esc(L(x.en, x.ta))}</option>`).join('')}</select>
+        <div class="tiny">${L('The type decides which inspection checklist applies.', 'வகை ஆய்வு பட்டியலை தீர்மானிக்கும்.')}</div>
+
+        <label class="f">${L('Asset name', 'சொத்தின் பெயர்')} *</label>
+        <input class="f" id="a-name">
+
+        <label class="f">${L('Ownership', 'உரிமை')} *</label>
+        <select class="f" id="a-own">${OWNERSHIP.map(o => `<option>${esc(o)}</option>`).join('')}</select>
+
+        <label class="f">${L('Department in occupation', 'பயன்படுத்தும் துறை')} *</label>
+        <select class="f" id="a-occ">${DEPARTMENTS.map(d => `<option>${esc(d)}</option>`).join('')}</select>
+
+        <label class="f">${L('Maintenance-responsible department', 'பராமரிப்புத் துறை')} *</label>
+        <select class="f" id="a-mnt">${DEPARTMENTS.map(d => `<option>${esc(d)}</option>`).join('')}</select>
+        <div class="tiny">${L('Grievances on this asset route here automatically.', 'குறைகள் இங்கே தானாக அனுப்பப்படும்.')}</div>
+
+        <label class="f">${L('Functional status', 'செயல்பாட்டு நிலை')} *</label>
+        <select class="f" id="a-fn">${FUNCTIONAL.map(f => `<option>${esc(f)}</option>`).join('')}</select>
+
+        <label class="f">${t('photos')} — ${L('minimum', 'குறைந்தது')} ${SETTINGS.minAssetPhotos}</label>
+        <div class="photorow" id="a-photos">
+          ${photoSlot('ph0', L('Front', 'முன்புறம்'))}
+          ${photoSlot('ph1', L('Interior', 'உட்புறம்'))}
+          ${photoSlot('ph2', L('ID board', 'பெயர்ப் பலகை'))}
+        </div>
+        <div class="tiny" id="ph-info">${L('Camera only. Photographs are compressed and stamped on this device.', 'கேமரா மட்டும். படங்கள் சுருக்கப்பட்டு முத்திரையிடப்படும்.')}</div>
+
+        <button class="btn" id="a-save">${t('submit')}</button>
+      </div>`;
+  },
+  mount(root) {
+    const typeSel = root.querySelector('#a-type');
+    const nameIn = root.querySelector('#a-name');
+    const occSel = root.querySelector('#a-occ');
+    const mntSel = root.querySelector('#a-mnt');
+
+    const syncType = () => {
+      const T = TYPE[typeSel.value];
+      nameIn.value = `${T.en} — ${draft.hab.replace(' (Main)', '')}`;
+      occSel.value = DEPARTMENTS.includes(T.occ) ? T.occ : DEPARTMENTS[0];
+      mntSel.value = DEPARTMENTS.includes(T.mnt) ? T.mnt : DEPARTMENTS[0];
+    };
+    typeSel.onchange = syncType; syncType();
+
+    root.querySelector('#loc-btn').onclick = async () => {
+      const box = root.querySelector('#loc-box');
+      box.className = 'alert alert-info';
+      box.innerHTML = `<span>◌</span><span>${L('Reading location…', 'இருப்பிடம் படிக்கிறது…')}</span>`;
+      const r = await getLocation();
+      if (!r.ok) {
+        box.className = 'alert alert-crit';
+        box.innerHTML = `<span>⚠</span><span>${esc(r.reason)}</span>`;
+        return;
+      }
+      draft.loc = r;
+      box.className = 'alert alert-ok';
+      box.innerHTML = `<span>◉</span><span>${r.lat}° N, ${r.lng}° E · ${L('accuracy', 'துல்லியம்')} ${r.acc} m</span>`;
+      // duplicate check against everything already recorded
+      const near = State.data.assets.filter(a =>
+        a.loc && a.type === typeSel.value && distanceMetres(a.loc, r) <= SETTINGS.duplicateMetres);
+      root.querySelector('#dupe').innerHTML = near.length
+        ? `<div class="alert alert-warn"><span>⚠</span><span>${L(
+            `A ${TYPE[typeSel.value].en} is already recorded ${distanceMetres(near[0].loc, r)} m away (${near[0].code}). Is this the same asset?`,
+            `${distanceMetres(near[0].loc, r)} மீ தொலைவில் ஏற்கனவே பதிவு உள்ளது. இது அதே சொத்தா?`)}</span></div>`
+        : '';
+    };
+
+    // camera inputs
+    ['ph0', 'ph1', 'ph2'].forEach((id, idx) => {
+      const inp = root.querySelector('#' + id);
+      if (!inp) return;
+      inp.onchange = async e => {
+        const f = e.target.files[0]; if (!f) return;
+        const label = inp.closest('.photo');
+        label.classList.add('busy'); label.innerHTML = '<span class="ic">◌</span>';
+        try {
+          const stamp = [
+            draft.loc ? `${draft.loc.lat}, ${draft.loc.lng}  ±${draft.loc.acc}m` : 'location not captured',
+            `${fmtDateTime(new Date().toISOString())}  ${State.data.profile.name || ''}`
+          ];
+          const p = await processPhoto(f, stamp);
+          draft.photos[idx] = p;
+          const url = await Photos.url(p.id);
+          label.classList.remove('busy'); label.classList.add('has-img');
+          label.style.backgroundImage = `url(${url})`; label.innerHTML = '';
+          root.querySelector('#ph-info').textContent =
+            L(`Compressed: ${p.originalKB} KB → ${p.kb} KB. Watch this on your own photographs — it is the real number.`,
+              `சுருக்கம்: ${p.originalKB} KB → ${p.kb} KB.`);
+        } catch (err) {
+          label.classList.remove('busy');
+          label.innerHTML = '<span class="ic">⚠</span><span>retry</span>';
+          toast(L('Could not read that photograph.', 'படத்தைப் படிக்க இயலவில்லை.'), 'crit');
+        }
+      };
+    });
+
+    root.querySelector('#a-save').onclick = () => {
+      if (!draft.loc) return toast(L('Capture the location first.', 'முதலில் இருப்பிடத்தைப் பதிவு செய்யவும்.'), 'crit');
+      const n = draft.photos.filter(Boolean).length;
+      if (n < SETTINGS.minAssetPhotos)
+        return toast(L(`${SETTINGS.minAssetPhotos} photographs are required — ${n} taken.`,
+                       `${SETTINGS.minAssetPhotos} படங்கள் தேவை — ${n} எடுக்கப்பட்டது.`), 'crit');
+      const a = State.addAsset({
+        type: typeSel.value, name: nameIn.value.trim(),
+        block: BLOCK, vill: draft.vill, hab: draft.hab,
+        own: root.querySelector('#a-own').value,
+        occ: occSel.value, mnt: mntSel.value,
+        functional: root.querySelector('#a-fn').value,
+        loc: draft.loc, photos: draft.photos.filter(Boolean)
+      });
+      toast(L('Asset recorded on this device.', 'சொத்து பதிவாகியது.'));
+      nav(`#/asset/${a.id}`);
+    };
+  }
+};
+
+/* ============================================================
+   OFFICER — asset record
+   ============================================================ */
+const asset = {
+  title() { const a = State.asset(location.hash.split('/')[2]); return a ? typeName(a.type) : '—'; },
+  sub() { const a = State.asset(location.hash.split('/')[2]); return a ? a.hab : ''; },
+  tab: 'home',
+  html() {
+    const a = State.asset(location.hash.split('/')[2]);
+    if (!a) return empty('?', L('Asset not found', 'சொத்து இல்லை'));
+    const insp = State.inspectionsFor(a.id).sort((x, y) => y.on.localeCompare(x.on));
+    const open = State.data.grievances.filter(g => g.assetId === a.id && g.status !== 'Closed');
+    return `
+      <div class="card">
+        <div class="row"><div class="grow">
+          <div class="t1">${esc(a.name)}</div>
+          <div class="mono">${esc(a.code)}</div>
+        </div>${condBadge(a.condition)}</div>
+        <div class="photorow" style="margin-top:10px">
+          ${(a.photos || []).map(p => `<div class="photo" data-photo="${esc(p.id)}"></div>`).join('')}
+        </div>
+      </div>
+      <div class="card">
+        ${dl(L('Type','வகை'), typeName(a.type))}
+        ${dl(L('Habitation','குடியிருப்பு'), a.hab)}
+        ${dl(L('Village Panchayat','ஊராட்சி'), a.vill)}
+        ${dl(L('Ownership','உரிமை'), a.own)}
+        ${dl(L('Occupied by','பயன்படுத்துபவர்'), a.occ)}
+        ${dl(L('Maintenance','பராமரிப்பு'), a.mnt)}
+        ${dl(L('Status','நிலை'), a.functional)}
+        ${dl(L('Location','இருப்பிடம்'), `${a.loc.lat}° N, ${a.loc.lng}° E · ±${a.loc.acc} m`)}
+        ${dl(L('Recorded','பதிவு'), `${esc(a.createdBy)} · ${fmtDateTime(a.createdOn)}`)}
+      </div>
+      <a class="btn btn-ghost" target="_blank" rel="noopener" href="${mapsLink(a.loc)}">➤ ${t('navigate')}</a>
+      ${open.length ? `<h3 class="sec">${L('Open grievances','நிலுவை குறைகள்')} (${open.length})</h3>
+        ${open.map(g => card({
+          title: esc(g.category), sub: esc(g.desc || ''),
+          meta: `${g.status} · ${State.ageDays(g)} ${L('days old','நாட்கள்')}`,
+          right: sevBadge(g.sev), href: `#/grievance/${g.id}`
+        })).join('')}` : ''}
+      <h3 class="sec">${t('inspHistory')} (${insp.length})</h3>
+      ${insp.length ? insp.map(i => card({
+        title: fmtDateTime(i.on),
+        sub: `${esc(i.by)} · ${i.params.length} ${L('parameters','அளவுருக்கள்')} · ${(i.grievanceIds || []).length} ${t('grievances')}`,
+        meta: i.fenceOK
+          ? `${L('Within','உள்ளே')} ${i.distance} m`
+          : `<span class="red">⚠ ${i.distance} m — ${L('outside the fence','வரம்புக்கு வெளியே')}</span>`,
+        right: condBadge(i.overall),
+        href: `#/inspection/${i.id}`
+      })).join('') : `<div class="card"><div class="t2">${t('notInspected')}</div></div>`}
+      <button class="btn" onclick="location.hash='#/inspect/${a.id}'">${t('inspectNow')}</button>`;
+  },
+  mount(root) { paintPhotos(root); }
+};
+function dl(k, v) { return `<div class="dl"><b>${esc(k)}</b><span>${esc(v)}</span></div>`; }
+
+/* ============================================================
+   OFFICER — inspection (geo-fence + checklist)
+   ============================================================ */
+const inspect = {
+  title: () => L('Inspection', 'ஆய்வு'),
+  sub() { const a = State.asset(location.hash.split('/')[2]); return a ? typeName(a.type) : ''; },
+  tab: 'home',
+  html() {
+    const a = State.asset(location.hash.split('/')[2]);
+    if (!a) return empty('?', L('Asset not found', 'சொத்து இல்லை'));
+    const list = CHECKLIST[TYPE[a.type].fam];
+    draft = { assetId: a.id, started: Date.now(), loc: null, ratings: {}, details: {} };
+    return `
+      <div id="fence" class="alert alert-info"><span>◉</span><span>${L(
+        'Capture your location to begin. The system records how far you are from the asset.',
+        'தொடங்க இருப்பிடத்தைப் பதிவு செய்யவும்.')}</span></div>
+      <button class="btn btn-ghost" id="f-btn">◉ ${t('capture')}</button>
+      <div id="chk" class="disabled-block">
+        <div class="alert alert-info"><span>ⓘ</span><span>${L(
+          'A rating of Needs attention or Critical requires a photograph and raises a grievance automatically.',
+          'கவனம் தேவை / மோசம் — படம் கட்டாயம், குறை தானாக பதிவாகும்.')}</span></div>
+        <div class="tiny sec-label">${L('Checklist for', 'பட்டியல்')}: ${esc(typeName(a.type))} — ${list.length} ${L('parameters', 'அளவுருக்கள்')}</div>
+        ${list.map((p, i) => `
+          <div class="card param" data-i="${i}">
+            <div class="t1">${i + 1}. ${esc(L(p[0], p[1]))}</div>
+            <div class="ratings">
+              ${RATINGS.map(r => `<button class="rate" data-r="${r.k}" data-i="${i}">${esc(r.short)}</button>`).join('')}
+            </div>
+            <div class="param-extra" id="px${i}"></div>
+          </div>`).join('')}
+        <button class="btn" id="i-submit">${t('reviewSubmit')}</button>
+      </div>`;
+  },
+  mount(root) {
+    const a = State.asset(draft.assetId);
+    const list = CHECKLIST[TYPE[a.type].fam];
+
+    root.querySelector('#f-btn').onclick = async () => {
+      const box = root.querySelector('#fence');
+      box.className = 'alert alert-info';
+      box.innerHTML = `<span>◌</span><span>${L('Reading location…', 'இருப்பிடம் படிக்கிறது…')}</span>`;
+      const r = await getLocation();
+      if (!r.ok) { box.className = 'alert alert-crit'; box.innerHTML = `<span>⚠</span><span>${esc(r.reason)}</span>`; return; }
+      draft.loc = r;
+      const d = distanceMetres(a.loc, r);
+      draft.distance = d;
+      draft.fenceOK = d <= State.data.settings.fence;
+      box.className = 'alert ' + (draft.fenceOK ? 'alert-ok' : 'alert-warn');
+      box.innerHTML = draft.fenceOK
+        ? `<span>◉</span><span>${L(`You are ${d} m from the registered location — inside the ${State.data.settings.fence} m limit.`,
+            `${d} மீ தொலைவில் — வரம்புக்குள்.`)}</span>`
+        : `<span>⚠</span><span>${L(`You are ${d} m away — outside the ${State.data.settings.fence} m limit. This inspection will be flagged. Record a reason below.`,
+            `${d} மீ தொலைவில் — வரம்புக்கு வெளியே. காரணம் பதிவு செய்யவும்.`)}</span>
+           <input class="f" id="fence-reason" placeholder="${L('Reason', 'காரணம்')}" style="margin-top:6px">`;
+      root.querySelector('#chk').classList.remove('disabled-block');
+    };
+
+    root.querySelectorAll('.rate').forEach(b => {
+      b.onclick = () => {
+        const i = +b.dataset.i, r = +b.dataset.r;
+        draft.ratings[i] = r;
+        const wrap = b.closest('.param');
+        wrap.querySelectorAll('.rate').forEach(x => x.className = 'rate');
+        b.className = 'rate on ' + RATINGS[r].cls;
+        renderExtra(root, i, list);
+      };
+    });
+
+    root.querySelector('#i-submit').onclick = () => submitInspection(root, a, list);
+  }
+};
+
+function renderExtra(root, i, list) {
+  const host = root.querySelector('#px' + i);
+  const r = draft.ratings[i];
+  if (r !== 2 && r !== 3) { host.innerHTML = ''; delete draft.details[i]; return; }
+  const d = draft.details[i] = draft.details[i] || { sev: r === 3 ? 'VC' : 'MS', photo: null, remark: '' };
+  host.innerHTML = `
+    <div class="sub-form">
+      <label class="f">${t('severity')}</label>
+      <select class="f" data-sev="${i}">${SEVERITY.map(s =>
+        `<option value="${s.k}" ${d.sev === s.k ? 'selected' : ''}>${esc(L(s.en, s.ta))} — ${s.sla} ${L('days', 'நாட்கள்')}</option>`).join('')}</select>
+      <label class="f">${t('photos')} *</label>
+      <div class="photorow">${photoSlot('pp' + i, L('Take photo', 'படம் எடு'), d.photo)}</div>
+      <label class="f">${t('remark')}</label>
+      <textarea class="f" rows="2" data-rem="${i}">${esc(d.remark)}</textarea>
+    </div>`;
+  host.querySelector(`[data-sev="${i}"]`).onchange = e => d.sev = e.target.value;
+  host.querySelector(`[data-rem="${i}"]`).oninput = e => d.remark = e.target.value;
+  const inp = host.querySelector('#pp' + i);
+  if (inp) inp.onchange = async e => {
+    const f = e.target.files[0]; if (!f) return;
+    const label = inp.closest('.photo');
+    label.classList.add('busy'); label.innerHTML = '<span class="ic">◌</span>';
+    const stamp = [
+      draft.loc ? `${draft.loc.lat}, ${draft.loc.lng}  ±${draft.loc.acc}m` : '',
+      `${fmtDateTime(new Date().toISOString())}  ${State.data.profile.name || ''}`,
+      list[i][0]
+    ];
+    d.photo = await processPhoto(f, stamp);
+    const url = await Photos.url(d.photo.id);
+    label.classList.remove('busy'); label.classList.add('has-img');
+    label.style.backgroundImage = `url(${url})`; label.innerHTML = '';
+  };
+}
+
+function submitInspection(root, a, list) {
+  const missing = [];
+  list.forEach((p, i) => { if (draft.ratings[i] === undefined) missing.push(i + 1); });
+  if (missing.length) return toast(L(`Rate every parameter. Missing: ${missing.slice(0, 6).join(', ')}${missing.length > 6 ? '…' : ''}`,
+    `அனைத்து அளவுருக்களையும் மதிப்பிடவும்.`), 'crit');
+  const noPhoto = Object.entries(draft.details).filter(([, d]) => !d.photo).map(([i]) => +i + 1);
+  if (noPhoto.length) return toast(L(`A photograph is required for parameter ${noPhoto[0]}.`,
+    `அளவுரு ${noPhoto[0]} க்கு படம் தேவை.`), 'crit');
+
+  const reasonEl = root.querySelector('#fence-reason');
+  const scores = Object.values(draft.ratings).filter(r => r < 4);
+  const overall = scores.length ? Math.max(...scores) : 0;
+  const params = list.map((p, i) => ({ p: p[0], r: draft.ratings[i], d: draft.details[i] || null }));
+
+  const rec = State.addInspection({
+    assetId: a.id, loc: draft.loc, distance: draft.distance, fenceOK: draft.fenceOK,
+    fenceReason: reasonEl ? reasonEl.value : '',
+    minutes: Math.max(1, Math.round((Date.now() - draft.started) / 60000)),
+    overall, params, grievanceIds: []
+  });
+
+  Object.entries(draft.details).forEach(([i, d]) => {
+    const g = State.addGrievance({
+      assetId: a.id, hab: a.hab, vill: a.vill, block: a.block,
+      category: guessCategory(list[+i][0]), sev: d.sev, dept: a.mnt,
+      source: 'Officer inspection', raisedBy: State.data.profile.name || 'Trial user',
+      desc: `${list[+i][0]} — ${d.remark || L('deficiency recorded during inspection', 'ஆய்வின்போது பதிவு')}`,
+      photo: d.photo, inspectionId: rec.id, loc: draft.loc
+    });
+    rec.grievanceIds.push(g.id);
+  });
+  State.save();
+
+  const n = rec.grievanceIds.length;
+  toast(L(`Inspection saved. ${n} grievance${n === 1 ? '' : 's'} raised and routed to ${a.mnt}.`,
+    `ஆய்வு சேமிக்கப்பட்டது. ${n} குறை ${a.mnt} க்கு அனுப்பப்பட்டது.`));
+  nav(`#/inspection/${rec.id}`);
+}
+
+function guessCategory(param) {
+  const p = param.toLowerCase();
+  if (/water|tank|pump|chlorin|pipe/.test(p)) return 'Water supply';
+  if (/toilet|sanit|septic|hand-wash|clean/.test(p)) return 'Sanitation and toilets';
+  if (/electric|light|wiring|pole/.test(p)) return 'Electricity and lighting';
+  if (/road|drain|culvert|surface/.test(p)) return 'Roads and drainage';
+  if (/ramp|access/.test(p)) return 'Accessibility';
+  if (/fire/.test(p)) return 'Fire safety';
+  if (/encroach/.test(p)) return 'Encroachment';
+  if (/structure|roof|wall|floor|door|window|stair|boundary|fenc/.test(p)) return 'Structural safety';
+  if (/seating|furniture|equipment/.test(p)) return 'Furniture and equipment';
+  return 'Other';
+}
+
+/* ============================================================
+   OFFICER — read-only inspection record
+   ============================================================ */
+const inspection = {
+  title: () => L('Inspection record', 'ஆய்வு பதிவு'),
+  sub() { const i = State.data.inspections.find(x => x.id === location.hash.split('/')[2]); return i ? fmtDateTime(i.on) : ''; },
+  tab: 'home',
+  html() {
+    const i = State.data.inspections.find(x => x.id === location.hash.split('/')[2]);
+    if (!i) return empty('?', L('Not found', 'இல்லை'));
+    const a = State.asset(i.assetId);
+    return `
+      <div class="card">
+        ${dl(L('Asset', 'சொத்து'), a ? a.name : i.assetId)}
+        ${dl(L('Officer', 'அலுவலர்'), i.by)}
+        ${dl(L('Recorded', 'பதிவு'), fmtDateTime(i.on))}
+        ${dl(L('Time taken', 'எடுத்த நேரம்'), i.minutes + ' ' + L('minutes', 'நிமிடம்'))}
+        ${dl(L('Location check', 'இருப்பிட சரிபார்ப்பு'),
+             (i.fenceOK ? L('Inside fence', 'வரம்புக்குள்') : L('OUTSIDE FENCE', 'வரம்புக்கு வெளியே')) + ' — ' + i.distance + ' m')}
+        ${dl(L('Overall', 'ஒட்டுமொத்தம்'), L(RATINGS[i.overall].en, RATINGS[i.overall].ta))}
+      </div>
+      ${!i.fenceOK ? `<div class="alert alert-crit"><span>⚠</span><span>${L('Flagged on the Collector dashboard.', 'ஆட்சியர் டாஷ்போர்டில் குறிக்கப்பட்டது.')}
+        ${esc(i.fenceReason || '')}</span></div>` : ''}
+      <h3 class="sec">${L('Parameters', 'அளவுருக்கள்')}</h3>
+      ${i.params.map(p => `<div class="card slim"><div class="row">
+        <div class="grow"><div class="t2b">${esc(p.p)}</div>
+        ${p.d && p.d.remark ? `<div class="tiny">${esc(p.d.remark)}</div>` : ''}</div>
+        <div class="tright">
+          <span class="tag ${RATINGS[p.r].cls}">${esc(L(RATINGS[p.r].en, RATINGS[p.r].ta))}</span>
+          ${p.d && p.d.photo ? `<div class="photo mini-photo" data-photo="${esc(p.d.photo.id)}"></div>` : ''}
+        </div></div></div>`).join('')}`;
+  },
+  mount(root) { paintPhotos(root); }
+};
+
+/* ============================================================
+   OFFICER — lists
+   ============================================================ */
+const assets = {
+  title: () => L('All my assets', 'அனைத்து சொத்துகள்'), tab: 'home',
+  sub: () => `${State.data.assets.length} ${L('recorded', 'பதிவு')}`,
+  html() {
+    if (!State.data.assets.length)
+      return empty('◇', L('The register is empty', 'பதிவேடு காலி'),
+        L('This is how the district looks on the first morning. Every record is created in the field.',
+          'இது முதல் நாள் நிலை. ஒவ்வொரு பதிவும் களத்தில் உருவாகிறது.'));
+    return State.data.assets.slice().reverse().map(a => card({
+      title: esc(typeName(a.type)), sub: esc(a.hab),
+      meta: `<span class="mono">${esc(a.code)}</span>`,
+      right: condBadge(a.condition), href: `#/asset/${a.id}`
+    })).join('');
+  }
+};
+
+const inspections = {
+  title: () => L('My inspections', 'என் ஆய்வுகள்'), tab: 'insp',
+  sub: () => `${State.data.inspections.length} ${L('records', 'பதிவுகள்')}`,
+  html() {
+    if (!State.data.inspections.length)
+      return empty('◷', L('No inspections yet', 'ஆய்வு இல்லை'),
+        L('Inspection begins once assets have been enumerated.', 'சொத்துகள் பதிவான பின் ஆய்வு தொடங்கும்.'));
+    return State.data.inspections.slice().reverse().map(i => {
+      const a = State.asset(i.assetId);
+      return card({
+        title: a ? esc(typeName(a.type)) : i.assetId,
+        sub: `${a ? esc(a.hab) : ''} · ${fmtDateTime(i.on)}`,
+        meta: `${(i.grievanceIds || []).length} ${t('grievances')}${i.fenceOK ? '' : ' · <span class="red">⚠ ' + L('out of fence', 'வரம்புக்கு வெளியே') + '</span>'}`,
+        right: condBadge(i.overall), href: `#/inspection/${i.id}`
+      });
+    }).join('');
+  }
+};
+
+const grievances = {
+  title: () => L('My grievances', 'என் குறைகள்'), tab: 'grv',
+  sub: () => `${State.openGrievances().length} ${L('open', 'நிலுவை')}`,
+  html() {
+    const mine = State.data.grievances.slice().reverse();
+    if (!mine.length) return empty('✓', L('No grievances', 'குறைகள் இல்லை'),
+      L('Grievances appear once inspections begin.', 'ஆய்வு தொடங்கியதும் தோன்றும்.'));
+    const wait = mine.filter(g => g.status === 'Attended').length;
+    return (wait ? `<div class="alert alert-warn"><span>⚠</span><span><b>${wait}</b> ${L('waiting for your verification.', 'உங்கள் சரிபார்ப்புக்கு.')}</span></div>` : '')
+      + mine.map(g => card({
+        title: esc(g.category), sub: esc(g.desc),
+        meta: `${g.hab} · ${g.status} · ${State.ageDays(g)} ${L('days', 'நாட்கள்')}${State.overdue(g) ? ' · <span class="red">' + L('overdue', 'தாண்டியது') + '</span>' : ''}`,
+        right: sevBadge(g.sev), href: `#/grievance/${g.id}`
+      })).join('');
+  }
+};
+
+/* ============================================================
+   Grievance record — officer view (verify and close)
+   ============================================================ */
+const grievance = {
+  title: () => L('Grievance', 'குறை'),
+  sub() { const g = State.grievance(location.hash.split('/')[2]); return g ? g.category : ''; },
+  tab: 'grv',
+  html() {
+    const g = State.grievance(location.hash.split('/')[2]);
+    if (!g) return empty('?', L('Not found', 'இல்லை'));
+    const a = g.assetId ? State.asset(g.assetId) : null;
+    const canClose = g.status === 'Attended';
+    return `
+      <div class="card">
+        <div class="row"><div class="grow">
+          <div class="t1">${esc(g.category)}</div>
+          <div class="t2">${a ? esc(typeName(a.type)) + ' · ' : ''}${esc(g.hab)}</div>
+        </div>${sevBadge(g.sev)}</div>
+        ${dl(L('Status', 'நிலை'), g.status)}
+        ${dl(L('Raised', 'பதிவு'), `${esc(g.raisedBy)} · ${fmtDateTime(g.raisedOn)}`)}
+        ${dl(L('Due', 'காலக்கெடு'), `${fmtDate(g.dueOn)}${State.overdue(g) ? ' — ' + L('OVERDUE', 'தாண்டியது') : ''}`)}
+        ${dl(L('With', 'யாரிடம்'), g.dept)}
+      </div>
+      <div class="card">
+        <div class="t2b">${L('Reported', 'பதிவு')}</div>
+        <div class="photorow">${g.photo ? `<div class="photo" data-photo="${esc(g.photo.id)}"></div>` : ''}</div>
+        <div class="tiny" style="margin-top:6px">${esc(g.desc)}</div>
+      </div>
+      ${g.rectPhoto ? `<div class="card"><div class="t2b">${L('Attended', 'சரிசெய்யப்பட்டது')} — ${esc(g.attendedBy || '')}</div>
+        <div class="photorow"><div class="photo" data-photo="${esc(g.rectPhoto.id)}"></div></div>
+        <div class="tiny" style="margin-top:6px">${esc(g.workDone || '')}</div></div>` : ''}
+      <div class="card"><div class="t2b">${L('History', 'வரலாறு')}</div>
+        <ul class="steps">${g.history.map(h => `<li><span class="dot done">•</span>
+          <div><b>${esc(h.what)}</b><br><span class="tiny">${esc(h.by)} · ${fmtDateTime(h.at)}</span></div></li>`).join('')}
+          ${g.status !== 'Closed' ? `<li><span class="dot block">✕</span><div>${L(
+            'Closure by the attending department — blocked by the system', 'சரிசெய்த துறையால் மூட முடியாது')}</div></li>` : ''}
+        </ul></div>
+      ${a ? `<a class="btn btn-ghost" target="_blank" rel="noopener" href="${mapsLink(a.loc)}">➤ ${L('Navigate to the spot', 'இடத்திற்கு வழிகாட்டு')}</a>` : ''}
+      ${canClose ? `<button class="btn btn-green" id="g-close">✓ ${t('close')}</button>
+        <button class="btn btn-grey" id="g-reject">${t('reject')}</button>`
+      : `<div class="alert alert-info"><span>ⓘ</span><span>${L(
+          'You can close this only after the department has attended it and uploaded a photograph.',
+          'துறை சரிசெய்து படம் பதிவேற்றிய பின்பே மூட முடியும்.')}</span></div>`}`;
+  },
+  mount(root) {
+    paintPhotos(root);
+    const id = location.hash.split('/')[2];
+    const c = root.querySelector('#g-close');
+    if (c) c.onclick = () => confirmBox(
+      L('Close this grievance? It is recorded against your name and the time.', 'இந்த குறையை மூடவா?'),
+      () => { State.updateGrievance(id, { status: 'Closed', closedOn: new Date().toISOString() }, 'Verified and closed'); toast(L('Closed.', 'மூடப்பட்டது.')); nav('#/grievances'); },
+      L('Close', 'மூடு'));
+    const r = root.querySelector('#g-reject');
+    if (r) r.onclick = () => {
+      const body = sheet(L('Return with reason', 'காரணத்துடன் திருப்பு'),
+        `<textarea class="f" rows="3" id="rj" placeholder="${L('Why is the work not satisfactory?', 'ஏன் திருப்தி இல்லை?')}"></textarea>
+         <button class="btn" id="rjgo">${L('Return to department', 'துறைக்கு திருப்பு')}</button>
+         <div class="tiny" style="margin-top:8px">${L('The original clock resumes. It does not reset.', 'அசல் கடிகாரம் தொடரும்.')}</div>`);
+      body.querySelector('#rjgo').onclick = () => {
+        const why = body.querySelector('#rj').value.trim();
+        if (!why) return toast(L('A reason is required.', 'காரணம் தேவை.'), 'crit');
+        State.updateGrievance(id, { status: 'In progress', rejections: (State.grievance(id).rejections || 0) + 1 }, 'Returned: ' + why);
+        closeSheet(); toast(L('Returned to the department.', 'துறைக்கு திருப்பப்பட்டது.')); nav('#/grievances');
+      };
+    };
+  }
+};
+
+/* ============================================================
+   VOLUNTEER
+   ============================================================ */
+const vHome = {
+  title: () => L('Volunteer', 'தன்னார்வலர்'),
+  sub: () => State.data.profile.hab + ' ' + L('only', 'மட்டும்'),
+  tab: 'vhome',
+  html() {
+    const habName = State.data.profile.hab;
+    const list = State.assetsIn(habName);
+    const mine = State.data.grievances.filter(g => g.source === 'Volunteer').reverse();
+    return `
+      <div class="card soft">
+        <div class="t1">${esc(State.data.profile.name || L('Volunteer', 'தன்னார்வலர்'))}</div>
+        <div class="t2">${L('Volunteer', 'தன்னார்வலர்')}, ${esc(habName)}</div>
+        <div class="tiny">${L('Registered by the BDO. You can report only for this habitation.', 'BDO ஆல் பதிவு. இந்த குடியிருப்பு மட்டும்.')}</div>
+        <label class="f">${L('Change habitation (trial only)', 'குடியிருப்பை மாற்று')}</label>
+        <select class="f" id="v-hab">${ALL_HABS.map(x => `<option ${x.hab === habName ? 'selected' : ''}>${esc(x.hab)}</option>`).join('')}</select>
+      </div>
+      <button class="btn" onclick="location.hash='#/v/report'">＋ ${t('report')}</button>
+      <h3 class="sec">${L('Public assets in my habitation', 'என் குடியிருப்பின் பொது சொத்துகள்')} (${list.length})</h3>
+      <div class="t2 pad">${L('View only. You cannot add, edit or inspect an asset — you can report a problem against one.',
+        'பார்வை மட்டும். சேர்க்க/திருத்த இயலாது — புகார் அளிக்கலாம்.')}</div>
+      ${list.length ? list.map(a => card({
+        title: esc(typeName(a.type)), sub: esc(a.name),
+        right: `<span class="tag t-blue">${L('Report', 'புகார்')} ›</span>`,
+        href: `#/v/report?a=${a.id}`
+      })).join('') : empty('◇', L('No assets listed yet', 'சொத்து பட்டியல் இல்லை'),
+        L('The officer has not enumerated this habitation yet. You can still report a problem against a place — it will be flagged for enumeration.',
+          'அலுவலர் இன்னும் கணக்கெடுக்கவில்லை. இடத்தின் அடிப்படையில் புகார் அளிக்கலாம்.'))}
+      <h3 class="sec">${t('myReports')} (${mine.length})</h3>
+      ${mine.length ? mine.map(g => card({
+        title: esc(g.category), sub: esc(g.desc),
+        meta: `${g.status} · ${fmtDate(g.raisedOn)}`,
+        right: sevBadge(g.sev), href: `#/grievance/${g.id}`
+      })).join('') : `<div class="card"><div class="t2">${L('Nothing reported yet.', 'இதுவரை புகார் இல்லை.')}</div></div>`}`;
+  },
+  mount(root) {
+    root.querySelector('#v-hab').onchange = e => {
+      State.data.profile.hab = e.target.value; State.save(); render();
+    };
+  }
+};
+
+const vReport = {
+  title: () => t('report'),
+  sub: () => State.data.profile.hab,
+  tab: 'vhome',
+  html() {
+    const habName = State.data.profile.hab;
+    const list = State.assetsIn(habName);
+    const pre = (location.hash.split('?a=')[1] || '');
+    draft = { photo: null, loc: null };
+    return `
+      <div id="v-loc" class="alert alert-info"><span>◉</span><span>${L('Capture where you are.', 'இருப்பிடத்தைப் பதிவு செய்யவும்.')}</span></div>
+      <button class="btn btn-ghost" id="v-locbtn">◉ ${t('capture')}</button>
+      <div class="card">
+        <label class="f">${L('What is the problem about?', 'எதைப் பற்றியது?')} *</label>
+        <select class="f" id="v-asset">
+          ${list.map(a => `<option value="${a.id}" ${a.id === pre ? 'selected' : ''}>${esc(typeName(a.type))} — ${esc(a.code)}</option>`).join('')}
+          <option value="">— ${L('A place in this habitation, not in the list', 'பட்டியலில் இல்லாத ஒரு இடம்')} —</option>
+        </select>
+        <div class="tiny">${list.length
+          ? L('This is the asset register for your habitation. You cannot add a new asset.', 'இது உங்கள் குடியிருப்பின் பதிவேடு. புதிய சொத்து சேர்க்க இயலாது.')
+          : L('No assets are recorded here yet, so only a place-based report is possible.', 'இங்கு சொத்து பதிவில்லை; இடத்தின் அடிப்படையில் மட்டும்.')}</div>
+
+        <label class="f">${L('Category', 'வகை')}</label>
+        <select class="f" id="v-cat">${CATEGORIES.map(c => `<option>${esc(c)}</option>`).join('')}</select>
+
+        <label class="f">${L('Describe it', 'விவரம்')} *</label>
+        <textarea class="f" rows="3" id="v-desc"></textarea>
+
+        <label class="f">${t('photos')} *</label>
+        <div class="photorow">${photoSlot('vph', L('Take photo', 'படம் எடு'))}</div>
+
+        <button class="btn" id="v-send">${L('Submit', 'சமர்ப்பி')}</button>
+        <div class="tiny" style="margin-top:8px">${L(
+          'If you choose a place not in the list, the officer is prompted to enumerate that asset on the next visit.',
+          'பட்டியலில் இல்லாத இடம் எனில், அடுத்த வருகையில் கணக்கெடுக்க அறிவிப்பு.')}</div>
+      </div>`;
+  },
+  mount(root) {
+    root.querySelector('#v-locbtn').onclick = async () => {
+      const box = root.querySelector('#v-loc');
+      box.innerHTML = `<span>◌</span><span>${L('Reading location…', 'படிக்கிறது…')}</span>`;
+      const r = await getLocation();
+      if (!r.ok) { box.className = 'alert alert-crit'; box.innerHTML = `<span>⚠</span><span>${esc(r.reason)}</span>`; return; }
+      draft.loc = r; box.className = 'alert alert-ok';
+      box.innerHTML = `<span>◉</span><span>${r.lat}° N, ${r.lng}° E · ±${r.acc} m</span>`;
+    };
+    const inp = root.querySelector('#vph');
+    inp.onchange = async e => {
+      const f = e.target.files[0]; if (!f) return;
+      const label = inp.closest('.photo');
+      label.classList.add('busy'); label.innerHTML = '<span class="ic">◌</span>';
+      draft.photo = await processPhoto(f, [
+        draft.loc ? `${draft.loc.lat}, ${draft.loc.lng}` : '',
+        fmtDateTime(new Date().toISOString())
+      ]);
+      const url = await Photos.url(draft.photo.id);
+      label.classList.remove('busy'); label.classList.add('has-img');
+      label.style.backgroundImage = `url(${url})`; label.innerHTML = '';
+    };
+    root.querySelector('#v-send').onclick = () => {
+      const desc = root.querySelector('#v-desc').value.trim();
+      if (!desc) return toast(L('Please describe the problem.', 'விவரம் தேவை.'), 'crit');
+      if (!draft.photo) return toast(L('A photograph is required.', 'படம் தேவை.'), 'crit');
+      const aid = root.querySelector('#v-asset').value;
+      const a = aid ? State.asset(aid) : null;
+      const habName = State.data.profile.hab;
+      const rec = ALL_HABS.find(x => x.hab === habName) || {};
+      State.addGrievance({
+        assetId: aid || null, hab: habName, vill: rec.vill, block: BLOCK,
+        category: root.querySelector('#v-cat').value, sev: 'MS',
+        dept: a ? a.mnt : 'Village Panchayat',
+        source: 'Volunteer', raisedBy: State.data.profile.name || 'Volunteer',
+        desc, photo: draft.photo, loc: draft.loc,
+        needsEnumeration: !aid
+      });
+      toast(a
+        ? L('Submitted and routed to ' + a.mnt + '.', 'சமர்ப்பிக்கப்பட்டது.')
+        : L('Submitted. The officer will be asked to enumerate this place.', 'சமர்ப்பிக்கப்பட்டது.'));
+      nav('#/v/home');
+    };
+  }
+};
+
+/* ============================================================
+   MAINTENANCE DEPARTMENT
+   ============================================================ */
+const dHome = {
+  title: () => t('queue'),
+  sub: () => State.data.profile.dept,
+  tab: 'dq',
+  html() {
+    const dept = State.data.profile.dept;
+    const open = State.data.grievances.filter(g => g.dept === dept && g.status !== 'Closed');
+    return `
+      <div class="card soft">
+        <label class="f">${L('Acting as department (trial only)', 'துறை தேர்வு')}</label>
+        <select class="f" id="d-dept">${DEPARTMENTS.map(d => `<option ${d === dept ? 'selected' : ''}>${esc(d)}</option>`).join('')}</select>
+      </div>
+      <div class="t2 pad">${L('Tap a band to work through it. Bands are ordered by what must be attended first.', 'ஒரு பிரிவைத் தட்டவும்.')}</div>
+      <div class="sevgrid">
+        ${SEVERITY.map(s => {
+          const n = open.filter(g => g.sev === s.k).length;
+          const od = open.filter(g => g.sev === s.k && State.overdue(g)).length;
+          return `<a class="sevcard ${s.cls}" href="#/d/queue/${s.k}">
+            <div class="n">${n}</div>
+            <div class="l">${s.icon} ${esc(L(s.en, s.ta))}</div>
+            <div class="d">${L('Attend within', 'காலக்கெடு')} ${s.sla} ${L('days', 'நாட்கள்')}${od ? ` · <b class="red">${od} ${L('overdue', 'தாண்டியது')}</b>` : ''}</div>
+          </a>`;
+        }).join('')}
+      </div>
+      <div class="card">
+        ${dl(L('Open with this department', 'நிலுவை'), open.length)}
+        ${dl(L('Past their clock', 'காலம் தாண்டியது'), open.filter(g => State.overdue(g)).length)}
+        ${dl(L('Awaiting officer verification', 'சரிபார்ப்பில்'), State.data.grievances.filter(g => g.dept === dept && g.status === 'Attended').length)}
+        ${dl(L('Closed', 'மூடப்பட்டது'), State.data.grievances.filter(g => g.dept === dept && g.status === 'Closed').length)}
+      </div>
+      <div class="alert alert-info"><span>ⓘ</span><span>${L(
+        'A grievance wrongly routed here can be sent back for re-tagging within 48 hours of receipt. After that it stays with this department.',
+        'தவறாக வந்த குறையை 48 மணி நேரத்திற்குள் திருப்பி அனுப்பலாம்.')}</span></div>`;
+  },
+  mount(root) {
+    root.querySelector('#d-dept').onchange = e => {
+      State.data.profile.dept = e.target.value; State.save(); render();
+    };
+  }
+};
+
+const dQueue = {
+  title() { const s = SEV[location.hash.split('/')[3]]; return s ? L(s.en, s.ta) : ''; },
+  sub() { const s = SEV[location.hash.split('/')[3]]; return s ? `${L('Attend within', 'காலக்கெடு')} ${s.sla} ${L('days', 'நாட்கள்')}` : ''; },
+  tab: 'dq',
+  html() {
+    const k = location.hash.split('/')[3];
+    const dept = State.data.profile.dept;
+    const list = State.data.grievances
+      .filter(g => g.dept === dept && g.sev === k && g.status !== 'Closed')
+      .sort((a, b) => a.dueOn.localeCompare(b.dueOn));
+    if (!list.length) return empty('✓', L('Nothing in this band', 'இப்பிரிவில் எதுவும் இல்லை'));
+    return list.map(g => {
+      const over = State.overdue(g);
+      const left = Math.ceil((new Date(g.dueOn) - Date.now()) / 864e5);
+      return card({
+        title: esc(g.category), sub: esc(g.desc),
+        meta: over
+          ? `<span class="red">${L('Overdue', 'தாண்டியது')} — ${Math.abs(left)} ${L('days', 'நாட்கள்')}</span>`
+          : `${left} ${L('days left', 'நாட்கள் மீதம்')} · ${esc(g.hab)}`,
+        right: g.status === 'Attended'
+          ? `<span class="tag t-blue">${L('With officer', 'அலுவலரிடம்')}</span>`
+          : (over ? `<span class="tag s-vc">⏰</span>` : sevBadge(g.sev)),
+        href: `#/d/g/${g.id}`
+      });
+    }).join('');
+  }
+};
+
+const dGrievance = {
+  title: () => L('Attend grievance', 'குறையை சரிசெய்'),
+  sub() { const g = State.grievance(location.hash.split('/')[3]); return g ? g.category : ''; },
+  tab: 'dq',
+  html() {
+    const g = State.grievance(location.hash.split('/')[3]);
+    if (!g) return empty('?', L('Not found', 'இல்லை'));
+    const a = g.assetId ? State.asset(g.assetId) : null;
+    const hoursSince = (Date.now() - new Date(g.raisedOn)) / 36e5;
+    const canRetag = hoursSince <= 48 && g.status !== 'Attended' && g.status !== 'Closed';
+    draft = { rect: null };
+    return `
+      <div class="row pad">${sevBadge(g.sev)}
+        <span class="tag ${State.overdue(g) ? 's-vc' : ''}">${State.overdue(g)
+          ? L('Overdue', 'தாண்டியது')
+          : Math.max(0, Math.ceil((new Date(g.dueOn) - Date.now()) / 864e5)) + ' ' + L('days left', 'நாட்கள் மீதம்')}</span></div>
+      <div class="card">
+        <div class="t1">${esc(g.category)}</div>
+        <div class="t2">${a ? esc(typeName(a.type)) + ' · ' : ''}${esc(g.hab)}</div>
+        <div class="photorow" style="margin-top:8px">${g.photo ? `<div class="photo" data-photo="${esc(g.photo.id)}"></div>` : ''}</div>
+        <div class="tiny" style="margin-top:6px">${esc(g.desc)}</div>
+        ${dl(L('Reported by', 'பதிவு செய்தவர்'), `${g.raisedBy} · ${fmtDateTime(g.raisedOn)}`)}
+        ${dl(L('Due', 'காலக்கெடு'), fmtDate(g.dueOn))}
+      </div>
+      ${a ? `<a class="btn btn-ghost" target="_blank" rel="noopener" href="${mapsLink(a.loc)}">➤ ${L('Navigate to the spot', 'இடத்திற்கு வழிகாட்டு')}</a>` : ''}
+      ${g.status === 'Attended'
+        ? `<div class="alert alert-info"><span>ⓘ</span><span>${L('Attended. It is now with the officer for verification.', 'சரிசெய்யப்பட்டது; சரிபார்ப்பில் உள்ளது.')}</span></div>`
+        : `<div class="card">
+            <label class="f">${L('Rectification photograph — required', 'சரிசெய்த படம் — கட்டாயம்')}</label>
+            <div class="photorow">${photoSlot('dph', L('Take photo', 'படம் எடு'))}</div>
+            <label class="f">${L('Work done', 'செய்யப்பட்ட பணி')}</label>
+            <textarea class="f" rows="2" id="d-work"></textarea>
+            <button class="btn" id="d-attend" disabled>${t('attend')}</button>
+            <div class="tiny center">${L('Disabled until at least one photograph is captured.', 'படம் எடுக்கும் வரை செயலிழந்துள்ளது.')}</div>
+          </div>`}
+      ${canRetag ? `<div class="card warnborder">
+        <div class="t1">${L('Not our department?', 'எங்கள் துறை அல்லவா?')}</div>
+        <div class="t2">${L('You may request re-tagging within 48 hours of receipt. Time remaining', '48 மணி நேரத்திற்குள் கோரலாம். மீதம்')}:
+          <b>${Math.max(0, Math.floor(48 - hoursSince))} ${L('hours', 'மணி')}</b></div>
+        <label class="f">${L('Correct department', 'சரியான துறை')}</label>
+        <select class="f" id="d-newdept">${DEPARTMENTS.filter(d => d !== g.dept).map(d => `<option>${esc(d)}</option>`).join('')}</select>
+        <label class="f">${L('Reason — required', 'காரணம் — கட்டாயம்')}</label>
+        <textarea class="f" rows="2" id="d-why"></textarea>
+        <button class="btn btn-grey" id="d-retag">${L('Request re-tagging', 'மறு-குறியீடு கோரிக்கை')}</button>
+        <div class="tiny">${L('Goes to the nodal officer, not to the other department. The clock keeps running.', 'நோடல் அலுவலருக்கு; கடிகாரம் நிற்காது.')}</div>
+      </div>` : (g.status !== 'Closed' ? `<div class="alert alert-warn"><span>⏱</span><span>${L(
+        'The 48-hour window for requesting re-tagging has passed. This grievance stays with this department.',
+        '48 மணி நேரம் முடிந்தது.')}</span></div>` : '')}
+      <div class="alert alert-crit"><span>✕</span><span>${L(
+        'You cannot close this grievance. Only the officer who raised it, or a designated verifying officer, can close it.',
+        'இதை நீங்கள் மூட முடியாது.')}</span></div>`;
+  },
+  mount(root) {
+    paintPhotos(root);
+    const id = location.hash.split('/')[3];
+    const inp = root.querySelector('#dph');
+    const btn = root.querySelector('#d-attend');
+    if (inp) inp.onchange = async e => {
+      const f = e.target.files[0]; if (!f) return;
+      const label = inp.closest('.photo');
+      label.classList.add('busy'); label.innerHTML = '<span class="ic">◌</span>';
+      draft.rect = await processPhoto(f, [
+        L('Rectification', 'சரிசெய்தல்'), fmtDateTime(new Date().toISOString()),
+        State.data.profile.dept
+      ]);
+      const url = await Photos.url(draft.rect.id);
+      label.classList.remove('busy'); label.classList.add('has-img');
+      label.style.backgroundImage = `url(${url})`; label.innerHTML = '';
+      btn.disabled = false;
+    };
+    if (btn) btn.onclick = () => {
+      State.updateGrievance(id, {
+        status: 'Attended', rectPhoto: draft.rect,
+        workDone: root.querySelector('#d-work').value.trim(),
+        attendedBy: State.data.profile.dept, attendedOn: new Date().toISOString()
+      }, 'Attended with photograph by ' + State.data.profile.dept);
+      toast(L('Marked as attended. It now goes to the officer for verification.', 'சரிசெய்யப்பட்டது எனக் குறிக்கப்பட்டது.'));
+      nav('#/d/home');
+    };
+    const rt = root.querySelector('#d-retag');
+    if (rt) rt.onclick = () => {
+      const why = root.querySelector('#d-why').value.trim();
+      if (!why) return toast(L('A reason is required.', 'காரணம் தேவை.'), 'crit');
+      State.updateGrievance(id, {
+        retag: { to: root.querySelector('#d-newdept').value, why, on: new Date().toISOString(), decision: 'Pending' }
+      }, 'Re-tagging requested → ' + root.querySelector('#d-newdept').value + ': ' + why);
+      toast(L('Sent to the nodal officer. The clock keeps running until it is decided.', 'நோடல் அலுவலருக்கு அனுப்பப்பட்டது.'));
+      nav('#/d/home');
+    };
+  }
+};
+
+/* app.js defines render(); this shim keeps the module version working */
+function setRender(_) { /* no-op in the bundled build */ }
+
+
+/* ===== dashboard.js ===== */
+/* ============================================================
+   dashboard.js — Collector's view, computed from trial data
+   Single click filters everything. Double click drills down.
+   ============================================================ */
+
+const DASH = { block: null, dept: null, sev: null, status: null, source: null, type: null };
+let MAPSRC = 'TNGIS';
+
+function dashFiltered() {
+  return State.data.grievances.filter(g =>
+    (!DASH.block || g.block === DASH.block) &&
+    (!DASH.dept || g.dept === DASH.dept) &&
+    (!DASH.sev || g.sev === DASH.sev) &&
+    (!DASH.status || g.status === DASH.status) &&
+    (!DASH.source || g.source === DASH.source) &&
+    (!DASH.type || (g.assetId && (State.asset(g.assetId) || {}).type === DASH.type)));
+}
+function dashSet(k, v) { DASH[k] = (DASH[k] === v) ? null : v; render(); }
+function dashClear() { Object.keys(DASH).forEach(k => DASH[k] = null); render(); }
+function tally(arr, fn) { const m = {}; arr.forEach(x => { const k = fn(x); if (k) m[k] = (m[k] || 0) + 1; }); return m; }
+
+function bars(map, keys, activeKey, setter, labels, colors) {
+  const max = Math.max(1, ...keys.map(k => map[k] || 0));
+  if (!keys.length) return `<div class="tiny pad">${L('Nothing to show yet.', 'இதுவரை தரவு இல்லை.')}</div>`;
+  return keys.map(k => {
+    const v = map[k] || 0;
+    const dim = activeKey && activeKey !== k ? ' dim' : '';
+    return `<div class="barrow${dim}" data-set="${setter}" data-val="${esc(k)}"
+        title="${esc((labels && labels[k]) || k)}: ${v}">
+        <span class="blabel">${esc((labels && labels[k]) || k)}</span>
+        <div class="btrack"><div class="bfill" style="width:${v / max * 100}%;background:${(colors && colors[k]) || 'var(--blue)'}"></div></div>
+        <span class="bval">${v}</span></div>`;
+  }).join('');
+}
+
+const dashboard = {
+  title: () => L('Collector dashboard', 'ஆட்சியர் டாஷ்போர்டு'),
+  sub: () => L('Live from the data recorded on this device', 'இந்த சாதனத்தில் பதிவான தரவு'),
+  chrome: 'wide',
+  html() {
+    const g = dashFiltered();
+    const all = State.data.grievances;
+    const cov = State.coverage();
+    const assetsAll = State.data.assets;
+    const assetsF = DASH.block || DASH.type
+      ? assetsAll.filter(a => (!DASH.block || a.block === DASH.block) && (!DASH.type || a.type === DASH.type))
+      : assetsAll;
+
+    if (!assetsAll.length && !all.length) {
+      return `<div class="wideinner">${empty('◔',
+        L('Nothing recorded yet', 'இதுவரை எதுவும் பதிவாகவில்லை'),
+        L('The dashboard is built from what officers actually record. Either record a few assets and inspections as the Field Officer, or load sample data from the menu to see a populated district.',
+          'அலுவலர்கள் பதிவு செய்ததிலிருந்து இது உருவாகிறது. மாதிரி தரவை ஏற்றவும்.'),
+        `<button class="btn" onclick="loadDemo()">${L('Load sample data', 'மாதிரி தரவை ஏற்று')}</button>`)}</div>`;
+    }
+
+    const closed = g.filter(x => x.status === 'Closed').length;
+    const overdue = g.filter(x => State.overdue(x)).length;
+    const volun = g.filter(x => x.source === 'Volunteer').length;
+    const avgAge = g.length ? (g.reduce((s, x) => s + State.ageDays(x), 0) / g.length).toFixed(1) : '—';
+    const critical = assetsF.filter(a => a.condition === 3).length;
+    const outFence = State.data.inspections.filter(i => !i.fenceOK).length;
+
+    const sevCnt = tally(g, x => x.sev);
+    const stCnt = tally(g, x => x.status);
+    const deptCnt = tally(g, x => x.dept);
+    const blockCnt = tally(g, x => x.block);
+    const typeCnt = tally(g, x => x.assetId ? (State.asset(x.assetId) || {}).type : null);
+
+    const sevLabels = Object.fromEntries(SEVERITY.map(s => [s.k, s.icon + ' ' + L(s.en, s.ta)]));
+    const sevCols = { VC: 'var(--critical)', CR: 'var(--serious)', MS: 'var(--warning)', LS: 'var(--good)' };
+    const stCols = { Closed: 'var(--good)', Attended: 'var(--blue)', 'In progress': 'var(--warning)',
+                     Open: '#7a869a', Assigned: '#7a869a', Reopened: 'var(--critical)' };
+    const typeLabels = Object.fromEntries(TYPES.map(x => [x.c, L(x.en, x.ta)]));
+
+    const chips = Object.entries(DASH).filter(([, v]) => v).map(([k, v]) =>
+      `<span class="chip" data-set="${k}" data-val="${esc(v)}">${
+        ({ block: 'Block', dept: 'Dept', sev: 'Severity', status: 'Status', source: 'Source', type: 'Asset type' })[k]
+      }: ${esc(k === 'sev' ? SEV[v].en : k === 'type' ? (TYPE[v] || {}).en || v : v)}<b>✕</b></span>`).join('');
+
+    const stackTot = Object.values(stCnt).reduce((a, b) => a + b, 0) || 1;
+
+    return `<div class="wideinner">
+      <div class="chips">${chips || `<span class="tiny">${L(
+        'No filter applied — single click any bar, band or tile to filter the whole page. Double click to list the records.',
+        'வடிகட்டி இல்லை — கிளிக் செய்து வடிகட்டவும், இரட்டை கிளிக் செய்து பட்டியலிடவும்.')}</span>`}
+        ${chips ? `<button class="mini-btn" onclick="dashClear()">${L('Clear all', 'அனைத்தையும் அழி')}</button>` : ''}</div>
+
+      <div class="kpis">
+        <div class="kpi"><div class="n">${assetsF.length}</div><div class="l">${L('Assets registered', 'சொத்துகள்')}</div>
+          <div class="d">${L('by field officers on this device', 'இந்த சாதனத்தில்')}</div></div>
+        <div class="kpi"><div class="n">${cov.inspected}</div><div class="l">${L('Habitations inspected', 'ஆய்வு முடிந்தது')}</div>
+          <div class="d">${cov.total - cov.inspected} ${L('pending of', 'நிலுவை / ')} ${cov.total}</div></div>
+        <div class="kpi"><div class="n">${g.length}</div><div class="l">${L('Grievances', 'குறைகள்')}</div>
+          <div class="d">${closed} ${L('closed', 'மூடப்பட்டது')}${g.length ? ' · ' + Math.round(closed / g.length * 100) + '%' : ''}</div></div>
+        <div class="kpi alert" data-set="status" data-val="__overdue"><div class="n">${overdue}</div>
+          <div class="l">${L('Overdue', 'காலம் தாண்டியது')}</div><div class="d">${L('past the severity clock', 'கடிகாரம் தாண்டியது')}</div></div>
+        <div class="kpi" data-set="source" data-val="Volunteer"><div class="n">${volun}</div>
+          <div class="l">${L('Raised by volunteers', 'தன்னார்வலர் புகார்')}</div><div class="d">${L('click to filter', 'வடிகட்ட கிளிக்')}</div></div>
+        <div class="kpi"><div class="n">${avgAge}</div><div class="l">${L('Avg days open', 'சராசரி நாட்கள்')}</div>
+          <div class="d">${L('within current filter', 'தற்போதைய வடிகட்டியில்')}</div></div>
+      </div>
+
+      <div class="grid2">
+        <div class="chartcard">
+          <h4>${L('Grievances by severity', 'தீவிரம் வாரியாக')}
+            <button class="mini-btn" data-drill="sev" data-val="VC">${L('List very critical', 'மிக அவசரம்')} ⤢</button></h4>
+          <div class="cap">${L('Each band carries its own clock — 2, 5, 10 and 20 days.', 'ஒவ்வொரு பிரிவுக்கும் தனி கடிகாரம்.')}</div>
+          ${bars(sevCnt, SEVERITY.map(s => s.k), DASH.sev, 'sev', sevLabels, sevCols)}
+        </div>
+        <div class="chartcard">
+          <h4>${L('Grievance status', 'நிலை')}</h4>
+          <div class="cap">${L('Click a segment or a legend entry to filter.', 'கிளிக் செய்து வடிகட்டவும்.')}</div>
+          <div class="stack">${GRV_STATUS.map(s => {
+            const v = stCnt[s] || 0;
+            return v ? `<i style="width:${v / stackTot * 100}%;background:${stCols[s] || '#999'}"
+              data-set="status" data-val="${esc(s)}" title="${s}: ${v}"></i>` : '';
+          }).join('')}</div>
+          <div class="legend">${GRV_STATUS.filter(s => stCnt[s]).map(s =>
+            `<span data-set="status" data-val="${esc(s)}" class="${DASH.status && DASH.status !== s ? 'dim' : ''}">
+              <i class="sw" style="background:${stCols[s] || '#999'}"></i>${esc(s)} — <b>${stCnt[s]}</b></span>`).join('')}</div>
+        </div>
+      </div>
+
+      <div class="grid2">
+        <div class="chartcard">
+          <h4>${L('By maintenance department', 'பராமரிப்புத் துறை வாரியாக')}</h4>
+          <div class="cap">${L("Routed automatically from each asset's maintenance tag.", 'சொத்தின் பராமரிப்பு குறியீட்டிலிருந்து.')}</div>
+          ${bars(deptCnt, DEPARTMENTS.filter(d => deptCnt[d]), DASH.dept, 'dept')}
+        </div>
+        <div class="chartcard">
+          <h4>${L('By asset type', 'சொத்து வகை வாரியாக')}</h4>
+          <div class="cap">${L('Which kinds of asset are generating the most problems.', 'எந்த வகை சொத்துகள் அதிக பிரச்சினை.')}</div>
+          ${bars(typeCnt, TYPES.map(x => x.c).filter(c => typeCnt[c]), DASH.type, 'type', typeLabels)}
+        </div>
+      </div>
+
+      <div class="grid2">
+        <div class="chartcard">
+          <h4>${L('District map', 'மாவட்ட வரைபடம்')}
+            <span class="srcbtns">${['TNGIS', 'Bhuvan', 'OpenStreetMap', 'Google Earth'].map(s =>
+              `<button class="mini-btn ${MAPSRC === s ? 'on' : ''}" data-map="${s}">${s}</button>`).join('')}</span></h4>
+          <div class="cap">${L('Placeholder for the base layer, plotted from real recorded coordinates. The source is a configuration choice, not something hard-wired.',
+            'அடிப்படை அடுக்கு இடம். உண்மையான ஆயத்தொலைவுகளிலிருந்து.')}</div>
+          ${mapPanel(assetsF)}
+          <div class="legend">${SEVERITY.map(s => `<span data-set="sev" data-val="${s.k}"
+            class="${DASH.sev && DASH.sev !== s.k ? 'dim' : ''}"><i class="sw" style="background:${sevCols[s.k]}"></i>${s.icon} ${esc(L(s.en, s.ta))}</span>`).join('')}</div>
+        </div>
+        <div class="chartcard">
+          <h4>${L('Exceptions requiring attention', 'கவனம் தேவைப்படுபவை')}</h4>
+          <div class="cap">${L('Double click a row to open the records.', 'இரட்டை கிளிக் செய்து பட்டியலிடவும்.')}</div>
+          <table class="dt"><tbody>
+            <tr data-set="status" data-val="__overdue"><td>${L('Grievances past their clock', 'கடிகாரம் தாண்டியது')}</td>
+              <td class="num red">${overdue} ›</td></tr>
+            <tr data-set="sev" data-val="VC"><td>${L('Very critical, not yet closed', 'மிக அவசரம், மூடப்படவில்லை')}</td>
+              <td class="num">${g.filter(x => x.sev === 'VC' && x.status !== 'Closed').length} ›</td></tr>
+            <tr data-set="status" data-val="Attended"><td>${L('Attended, awaiting verification', 'சரிபார்ப்புக்கு காத்திருக்கிறது')}</td>
+              <td class="num">${g.filter(x => x.status === 'Attended').length} ›</td></tr>
+            <tr><td>${L('Assets rated Critical', 'மோசம் என மதிப்பிடப்பட்டவை')}</td><td class="num">${critical} ›</td></tr>
+            <tr><td>${L('Inspections outside the geo-fence', 'வரம்புக்கு வெளியே ஆய்வு')}</td><td class="num">${outFence} ›</td></tr>
+            <tr><td>${L('Habitations not yet enumerated', 'கணக்கெடுக்கப்படாதவை')}</td><td class="num">${cov.total - cov.enumerated} ›</td></tr>
+            <tr><td>${L('Grievances on places not yet enumerated', 'கணக்கெடுக்காத இடங்களில்')}</td>
+              <td class="num">${all.filter(x => x.needsEnumeration).length} ›</td></tr>
+          </tbody></table>
+        </div>
+      </div>
+
+      <div class="chartcard">
+        <h4>${L('Records', 'பதிவுகள்')}
+          <span class="srcbtns">
+            <button class="mini-btn" onclick="exportCSV('assets')">${L('Assets CSV', 'சொத்துகள் CSV')}</button>
+            <button class="mini-btn" onclick="exportCSV('inspections')">${L('Inspections CSV', 'ஆய்வுகள் CSV')}</button>
+            <button class="mini-btn" onclick="exportCSV('grievances')">${L('Grievances CSV', 'குறைகள் CSV')}</button>
+          </span></h4>
+        <div class="cap">${L('Every extract carries the filter that produced it. Exports come from this device only.',
+          'ஒவ்வொரு ஏற்றுமதியும் வடிகட்டியுடன்.')}</div>
+        <table class="dt"><thead><tr>
+          <th>ID</th><th>${L('Category', 'வகை')}</th><th>${L('Asset', 'சொத்து')}</th><th>${L('Habitation', 'குடியிருப்பு')}</th>
+          <th>${L('Department', 'துறை')}</th><th>${L('Severity', 'தீவிரம்')}</th><th>${L('Status', 'நிலை')}</th>
+          <th>${L('Days', 'நாட்கள்')}</th><th>${L('Location', 'இருப்பிடம்')}</th></tr></thead><tbody>
+          ${g.slice(0, 60).map(x => {
+            const a = x.assetId ? State.asset(x.assetId) : null;
+            return `<tr><td class="mono">${esc(x.id)}</td><td>${esc(x.category)}</td>
+              <td>${a ? esc(typeName(a.type)) : '<i>' + L('place only', 'இடம் மட்டும்') + '</i>'}</td>
+              <td>${esc(x.hab)}</td><td>${esc(x.dept)}</td>
+              <td>${sevBadge(x.sev)}</td><td>${esc(x.status)}</td><td class="num">${State.ageDays(x)}</td>
+              <td>${x.loc ? `<a class="maplink" target="_blank" rel="noopener" href="${mapsLink(x.loc)}">${L('Maps', 'வரைபடம்')} ➤</a>` : ''}</td></tr>`;
+          }).join('')}
+        </tbody></table>
+        ${g.length > 60 ? `<div class="tiny" style="margin-top:8px">${L(
+          `Showing 60 of ${g.length}. Nothing is silently truncated — export the CSV for the whole set.`,
+          `${g.length} இல் 60 காட்டப்படுகிறது. முழு தரவுக்கு CSV ஏற்றுமதி செய்யவும்.`)}</div>` : ''}
+      </div>
+
+      <div class="chartcard">
+        <h4>${L('How the interaction works', 'இது எப்படி வேலை செய்கிறது')}</h4>
+        <table class="dt"><tbody>
+          <tr><td style="width:32%"><b>${L('Single click', 'ஒரு கிளிக்')}</b></td>
+            <td>${L('Filters every chart and table on this page. Filters combine. Click again to remove.', 'அனைத்தையும் வடிகட்டும்.')}</td></tr>
+          <tr><td><b>${L('Double click', 'இரட்டை கிளிக்')}</b></td>
+            <td>${L('Opens the underlying records, each with a Maps link.', 'அடிப்படை பதிவுகளைத் திறக்கும்.')}</td></tr>
+          <tr><td><b>${L('On a phone', 'கைபேசியில்')}</b></td>
+            <td>${L('Double click is unreliable on touch screens. The ⤢ buttons do the same job and must be kept in the built version.', 'தொடுதிரையில் ⤢ பொத்தான்களைப் பயன்படுத்தவும்.')}</td></tr>
+        </tbody></table>
+      </div>
+    </div>`;
+  },
+  mount(root) {
+    root.querySelectorAll('[data-set]').forEach(el => {
+      el.addEventListener('click', () => {
+        const k = el.dataset.set, v = el.dataset.val;
+        if (v === '__overdue') { dashOverdueOnly(); return; }
+        dashSet(k, v);
+      });
+      el.addEventListener('dblclick', () => drill(el.dataset.set, el.dataset.val));
+    });
+    root.querySelectorAll('[data-drill]').forEach(el => {
+      el.addEventListener('click', e => { e.stopPropagation(); drill(el.dataset.drill, el.dataset.val); });
+    });
+    root.querySelectorAll('[data-map]').forEach(el => {
+      el.onclick = () => { MAPSRC = el.dataset.map; render(); };
+    });
+  }
+};
+
+function dashOverdueOnly() {
+  const rows = State.data.grievances.filter(g => State.overdue(g));
+  showRecords(L('Grievances past their clock', 'கடிகாரம் தாண்டியவை'), rows);
+}
+
+function drill(dim, val) {
+  if (val === '__overdue') return dashOverdueOnly();
+  const rows = State.data.grievances.filter(g =>
+    dim === 'type' ? (g.assetId && (State.asset(g.assetId) || {}).type === val) : g[dim] === val);
+  const label = { block: 'Block', dept: 'Department', sev: 'Severity', status: 'Status', source: 'Source', type: 'Asset type' }[dim] || dim;
+  const nice = dim === 'sev' ? SEV[val].en : dim === 'type' ? (TYPE[val] || {}).en || val : val;
+  showRecords(`${label}: ${nice}`, rows);
+}
+
+function showRecords(title, rows) {
+  const body = sheet(title, `
+    <div class="tiny" style="margin-bottom:10px">${L(
+      `${rows.length} record${rows.length === 1 ? '' : 's'}. In the built system each row opens the full asset record with its photographs.`,
+      `${rows.length} பதிவுகள்.`)}</div>
+    <table class="dt"><thead><tr><th>ID</th><th>${L('Category', 'வகை')}</th><th>${L('Habitation', 'குடியிருப்பு')}</th>
+      <th>${L('Department', 'துறை')}</th><th>${L('Severity', 'தீவிரம்')}</th><th>${L('Status', 'நிலை')}</th>
+      <th>${L('Days', 'நாட்கள்')}</th><th></th></tr></thead><tbody>
+      ${rows.slice(0, 200).map(g => `<tr><td class="mono">${esc(g.id)}</td><td>${esc(g.category)}</td>
+        <td>${esc(g.hab)}</td><td>${esc(g.dept)}</td><td>${sevBadge(g.sev)}</td>
+        <td>${esc(g.status)}</td><td class="num">${State.ageDays(g)}</td>
+        <td>${g.loc ? `<a class="maplink" target="_blank" rel="noopener" href="${mapsLink(g.loc)}">➤</a>` : ''}</td></tr>`).join('')}
+    </tbody></table>`);
+  return body;
+}
+
+function mapPanel(assetsF) {
+  const pts = [];
+  const withLoc = assetsF.filter(a => a.loc);
+  if (withLoc.length) {
+    const lats = withLoc.map(a => a.loc.lat), lngs = withLoc.map(a => a.loc.lng);
+    let minLat = Math.min(...lats), maxLat = Math.max(...lats);
+    let minLng = Math.min(...lngs), maxLng = Math.max(...lngs);
+    if (maxLat - minLat < 0.004) { minLat -= 0.002; maxLat += 0.002; }
+    if (maxLng - minLng < 0.004) { minLng -= 0.002; maxLng += 0.002; }
+    withLoc.forEach(a => {
+      const x = 8 + (a.loc.lng - minLng) / (maxLng - minLng) * 84;
+      const y = 92 - (a.loc.lat - minLat) / (maxLat - minLat) * 84;
+      const col = a.condition === 3 ? 'var(--critical)' : a.condition === 2 ? 'var(--warning)'
+                : a.condition === null || a.condition === undefined ? '#98a2b3' : 'var(--good)';
+      pts.push(`<circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="1.6" fill="${col}" opacity=".92"><title>${esc(a.name)}</title></circle>`);
+    });
+  }
+  const bg = MAPSRC === 'Google Earth' ? '#2b3a2b' : MAPSRC === 'OpenStreetMap' ? '#eef3e6' : 'var(--surface)';
+  const land = MAPSRC === 'Google Earth' ? '#3b4f38' : 'var(--surface-2)';
+  return `<div class="mapbox"><span class="maptag">${MAPSRC} — ${L('placeholder', 'இடம்')}</span>
+    <svg viewBox="0 0 100 100" style="width:100%;height:230px;display:block;background:${bg}">
+      <rect x="4" y="4" width="92" height="92" rx="3" fill="${land}" stroke="var(--grid)" stroke-width="0.5"/>
+      ${MAPSRC === 'TNGIS' ? `<g stroke="var(--grid)" stroke-width="0.35">
+        <line x1="30" y1="4" x2="30" y2="96"/><line x1="58" y1="4" x2="58" y2="96"/>
+        <line x1="4" y1="38" x2="96" y2="38"/><line x1="4" y1="68" x2="96" y2="68"/></g>` : ''}
+      ${pts.join('') || `<text x="50" y="50" text-anchor="middle" font-size="4" fill="var(--muted)">${
+        L('No coordinates recorded yet', 'ஆயத்தொலைவு இல்லை')}</text>`}
+    </svg></div>`;
+}
+
+
+/* ===== app.js ===== */
+/* ============================================================
+   app.js — routing, chrome, roles, feedback, demo data
+   ============================================================ */
+
+const ROUTES = [
+  [/^#\/?$/,                     () => login],
+  [/^#\/login/,                  () => login],
+  [/^#\/home/,                   () => home],
+  [/^#\/village\//,              () => village],
+  [/^#\/hab\//,                  () => hab],
+  [/^#\/new\//,                  () => newAsset],
+  [/^#\/asset\//,                () => asset],
+  [/^#\/assets/,                 () => assets],
+  [/^#\/inspect\//,              () => inspect],
+  [/^#\/inspection\//,           () => inspection],
+  [/^#\/inspections/,            () => inspections],
+  [/^#\/grievances/,             () => grievances],
+  [/^#\/grievance\//,            () => grievance],
+  [/^#\/v\/home/,                () => vHome],
+  [/^#\/v\/report/,              () => vReport],
+  [/^#\/d\/home/,                () => dHome],
+  [/^#\/d\/queue\//,             () => dQueue],
+  [/^#\/d\/g\//,                 () => dGrievance],
+  [/^#\/dashboard/,              () => dashboard]
+];
+
+const TABS = {
+  officer: [['home', '◫', () => L('Home', 'முகப்பு'), '#/home'],
+            ['insp', '◷', () => L('Inspections', 'ஆய்வுகள்'), '#/inspections'],
+            ['grv', '!', () => L('Grievances', 'குறைகள்'), '#/grievances'],
+            ['data', '⇅', () => L('Data', 'தரவு'), '#/home']],
+  volunteer: [['vhome', '◫', () => L('Home', 'முகப்பு'), '#/v/home']],
+  dept: [['dq', '!', () => L('Queue', 'பட்டியல்'), '#/d/home']]
+};
+
+function currentRole() {
+  const h = location.hash;
+  if (h.startsWith('#/v/')) return 'volunteer';
+  if (h.startsWith('#/d/')) return 'dept';
+  if (h.startsWith('#/dashboard')) return 'collector';
+  return 'officer';
+}
+
+function screenFor() {
+  const h = location.hash || '#/';
+  for (const [re, get] of ROUTES) if (re.test(h)) return get();
+  return login;
+}
+
+/* ---------------- render ---------------- */
+function render() {
+  const S = screenFor();
+  const role = currentRole();
+  document.querySelectorAll('#roles .pill').forEach(p =>
+    p.setAttribute('aria-pressed', String(p.dataset.role === role)));
+
+  const wide = S.chrome === 'wide';
+  document.getElementById('phonewrap').classList.toggle('hide', wide);
+  document.getElementById('widewrap').classList.toggle('hide', !wide);
+
+  const host = wide ? document.getElementById('wide-body') : document.getElementById('body');
+  try {
+    host.innerHTML = S.html();
+  } catch (e) {
+    host.innerHTML = `<div class="alert alert-crit"><span>⚠</span><span>Something went wrong drawing this screen. Please report it.<br><small>${esc(e.message)}</small></span></div>`;
+    console.error(e);
+  }
+  host.scrollTop = 0;
+
+  if (!wide) {
+    document.getElementById('scr-title').textContent = S.title();
+    document.getElementById('scr-sub').textContent = S.sub ? S.sub() : '';
+    document.getElementById('backbtn').style.visibility = history.length > 1 ? 'visible' : 'hidden';
+    const tabs = TABS[role] || [];
+    const tb = document.getElementById('tabs');
+    tb.innerHTML = tabs.map(([k, ic, lab, href]) =>
+      `<a class="${S.tab === k ? 'on' : ''}" href="${href}"${k === 'data' ? ' data-datamenu="1"' : ''}>
+        <span class="ic">${ic}</span>${lab()}</a>`).join('');
+    tb.style.display = (tabs.length && location.hash !== '#/login' && location.hash !== '#/') ? 'flex' : 'none';
+    const dm = tb.querySelector('[data-datamenu]');
+    if (dm) dm.onclick = e => { e.preventDefault(); dataMenu(); };
+  } else {
+    document.getElementById('wide-title').textContent = S.title();
+    document.getElementById('wide-sub').textContent = S.sub ? S.sub() : '';
+  }
+
+  if (S.mount) { try { S.mount(host); } catch (e) { console.error(e); } }
+  document.getElementById('fb-screen').textContent = (location.hash || '#/').replace('#/', '') || 'login';
+}
+setRender(render);
+
+/* ---------------- data menu (export / reset / demo) ---------------- */
+function dataMenu() {
+  const d = State.data;
+  sheet(L('Trial data on this device', 'இந்த சாதனத்தில் உள்ள தரவு'), `
+    <div class="card slim">
+      ${['assets', 'inspections', 'grievances', 'feedback'].map(k =>
+        `<div class="dl"><b>${esc(k)}</b><span>${d[k].length}</span></div>`).join('')}
+      <div class="dl"><b>${L('Started', 'தொடங்கியது')}</b><span>${fmtDateTime(d.meta.started)}</span></div>
+    </div>
+    <div class="alert alert-info"><span>ⓘ</span><span>${L(
+      'Everything is stored on this phone only. There is no server. Export before clearing your browser data, or the trial records are lost.',
+      'அனைத்தும் இந்த கைபேசியில் மட்டும். சேவையகம் இல்லை. அழிப்பதற்கு முன் ஏற்றுமதி செய்யவும்.')}</span></div>
+    <button class="btn" onclick="exportJSON()">⇩ ${L('Export everything (JSON)', 'அனைத்தையும் ஏற்றுமதி (JSON)')}</button>
+    <div class="btnrow">
+      <button class="btn btn-ghost" onclick="exportCSV('assets')">${L('Assets CSV', 'சொத்துகள்')}</button>
+      <button class="btn btn-ghost" onclick="exportCSV('inspections')">${L('Inspections CSV', 'ஆய்வுகள்')}</button>
+    </div>
+    <div class="btnrow">
+      <button class="btn btn-ghost" onclick="exportCSV('grievances')">${L('Grievances CSV', 'குறைகள்')}</button>
+      <button class="btn btn-ghost" onclick="exportCSV('feedback')">${L('Feedback CSV', 'கருத்துகள்')}</button>
+    </div>
+    <hr class="rule">
+    <button class="btn btn-grey" onclick="loadDemo()">${L('Load sample data (for a demonstration)', 'மாதிரி தரவை ஏற்று')}</button>
+    <button class="btn btn-grey" onclick="askReset()">${L('Reset to Day 0 — delete everything', 'நாள் 0 க்கு மீட்டமை')}</button>`);
+}
+
+function askReset() {
+  closeSheet();
+  confirmBox(
+    L('Delete every asset, inspection, grievance and photograph recorded on this device? Export first if you want to keep them.',
+      'இந்த சாதனத்தில் உள்ள அனைத்தையும் அழிக்கவா?'),
+    async () => { await State.reset(); toast(L('Reset. This is Day 0.', 'மீட்டமைக்கப்பட்டது.')); location.hash = '#/home'; render(); },
+    L('Delete everything', 'அனைத்தையும் அழி'));
+}
+
+/* ---------------- feedback ---------------- */
+function feedbackSheet() {
+  const screenKey = (location.hash || '#/').replace('#/', '') || 'login';
+  const body = sheet(L('Feedback on this screen', 'இந்த திரை பற்றிய கருத்து'), `
+    <div class="tiny" style="margin-bottom:8px">${L('Screen', 'திரை')}: <b>${esc(screenKey)}</b></div>
+    <div class="btnrow">
+      <button class="mini-btn big" data-v="ok">👍 ${L('Works as expected', 'சரியாக உள்ளது')}</button>
+      <button class="mini-btn big" data-v="change">✎ ${L('Needs change', 'மாற்றம் தேவை')}</button>
+      <button class="mini-btn big" data-v="broken">⚠ ${L('Something broke', 'பிழை')}</button>
+    </div>
+    <label class="f">${L('What should change?', 'என்ன மாற்ற வேண்டும்?')}</label>
+    <textarea class="f" rows="4" id="fb-text" placeholder="${L('In Tamil or English', 'தமிழ் அல்லது ஆங்கிலம்')}"></textarea>
+    <button class="btn" id="fb-save">${L('Save feedback', 'கருத்தை சேமி')}</button>
+    <div class="tiny" style="margin-top:8px">${L(
+      'Saved on this phone. Export the feedback file at the end of the trial and send it to the nodal officer.',
+      'இந்த கைபேசியில் சேமிக்கப்படும். சோதனை முடிவில் ஏற்றுமதி செய்து அனுப்பவும்.')}</div>`);
+  let verdict = 'change';
+  body.querySelectorAll('[data-v]').forEach(b => b.onclick = () => {
+    verdict = b.dataset.v;
+    body.querySelectorAll('[data-v]').forEach(x => x.classList.remove('on'));
+    b.classList.add('on');
+  });
+  body.querySelector('#fb-save').onclick = () => {
+    const comment = body.querySelector('#fb-text').value.trim();
+    if (!comment && verdict === 'change') return toast(L('Please say what should change.', 'என்ன மாற்ற வேண்டும் எனக் கூறவும்.'), 'crit');
+    State.addFeedback({ screen: screenKey, verdict, comment });
+    closeSheet();
+    toast(L('Thank you — feedback saved.', 'நன்றி — கருத்து சேமிக்கப்பட்டது.'));
+  };
+}
+
+/* ---------------- demo data ---------------- */
+let _seed = 20260818;
+function rnd() { _seed = (_seed * 1103515245 + 12345) & 0x7fffffff; return _seed / 0x7fffffff; }
+function ri(a, b) { return a + Math.floor(rnd() * (b - a + 1)); }
+function pick(a) { return a[Math.floor(rnd() * a.length)]; }
+
+function loadDemo() {
+  closeSheet();
+  confirmBox(
+    L('Add a set of sample records so the dashboard has something to show? Anything you have already recorded is kept.',
+      'மாதிரி பதிவுகளைச் சேர்க்கவா?'),
+    () => {
+      _seed = 20260818;
+      const pool = ['ANG', 'SCH', 'CTL', 'OHT', 'STL', 'RD', 'NMC', 'PDS', 'HPM', 'BUS', 'PND', 'CHL', 'LIB', 'PLY', 'REV', 'SHG'];
+      let made = 0;
+      ALL_HABS.forEach((h, hi) => {
+        if (hi % 7 === 5) return;                       // a few habitations stay un-enumerated
+        const n = ri(2, 5);
+        for (let i = 0; i < n; i++) {
+          const type = pool[(hi + i) % pool.length];
+          const T = TYPE[type];
+          const cond = rnd() < 0.3 ? 0 : rnd() < 0.5 ? 1 : rnd() < 0.7 ? 2 : 3;
+          const a = State.addAsset({
+            type, name: `${T.en} — ${h.hab.replace(' (Main)', '')}`,
+            block: BLOCK, vill: h.vill, hab: h.hab,
+            own: rnd() < 0.12 ? 'Rented' : 'Government owned',
+            occ: T.occ, mnt: T.mnt, functional: rnd() < 0.9 ? 'In use' : 'Partly used',
+            loc: { lat: +(10.86 + rnd() * 0.12).toFixed(5), lng: +(78.68 + rnd() * 0.14).toFixed(5), acc: ri(4, 22) },
+            photos: [], demo: true
+          });
+          made++;
+          if (hi % 3 !== 2) {                            // roughly two thirds inspected
+            const list = CHECKLIST[T.fam];
+            const params = list.map(p => ({ p: p[0], r: rnd() < 0.35 ? 0 : rnd() < 0.6 ? 1 : rnd() < 0.85 ? 2 : 3, d: null }));
+            const bad = params.filter(x => x.r >= 2);
+            const rec = State.addInspection({
+              assetId: a.id, loc: a.loc, distance: ri(3, 140), fenceOK: rnd() > 0.07,
+              minutes: ri(4, 22), overall: Math.max(...params.map(x => x.r)),
+              params, grievanceIds: [], demo: true
+            });
+            bad.slice(0, 3).forEach(b => {
+              const sev = b.r === 3 ? (rnd() < 0.4 ? 'VC' : 'CR') : (rnd() < 0.5 ? 'MS' : 'LS');
+              const g = State.addGrievance({
+                assetId: a.id, hab: h.hab, vill: h.vill, block: BLOCK,
+                category: guessCategory(b.p), sev, dept: T.mnt,
+                source: rnd() < 0.28 ? 'Volunteer' : 'Officer inspection',
+                raisedBy: rnd() < 0.28 ? 'Volunteer' : (State.data.profile.name || 'Trial user'),
+                desc: b.p, inspectionId: rec.id, loc: a.loc, demo: true
+              });
+              // age it, so the clocks mean something
+              const ageDays = ri(0, 26);
+              g.raisedOn = new Date(Date.now() - ageDays * 864e5).toISOString();
+              g.dueOn = new Date(new Date(g.raisedOn).getTime() + SEV[sev].sla * 864e5).toISOString();
+              const roll = rnd();
+              g.status = roll < 0.5 ? 'Closed' : roll < 0.62 ? 'Attended' : roll < 0.85 ? 'In progress' : 'Open';
+              rec.grievanceIds.push(g.id);
+            });
+          }
+        }
+      });
+      State.save();
+      toast(L(`Sample data added — ${made} assets.`, `மாதிரி தரவு சேர்க்கப்பட்டது — ${made} சொத்துகள்.`));
+      render();
+    },
+    L('Add sample data', 'சேர்'));
+}
+
+/* ---------------- boot ---------------- */
+function boot() {
+  State.load();
+
+  document.getElementById('roles').addEventListener('click', e => {
+    const b = e.target.closest('[data-role]'); if (!b) return;
+    const r = b.dataset.role;
+    location.hash = r === 'officer' ? '#/home' : r === 'volunteer' ? '#/v/home'
+                  : r === 'dept' ? '#/d/home' : '#/dashboard';
+  });
+
+  document.getElementById('langbtn').onclick = () => {
+    State.data.settings.lang = State.data.settings.lang === 'ta' ? 'en' : 'ta';
+    State.save();
+    document.getElementById('langbtn').textContent = State.data.settings.lang === 'ta' ? 'English' : 'தமிழ்';
+    render();
+  };
+  document.getElementById('langbtn').textContent = State.data.settings.lang === 'ta' ? 'English' : 'தமிழ்';
+
+  document.getElementById('fb-btn').onclick = feedbackSheet;
+  document.getElementById('backbtn').onclick = () => history.back();
+  document.getElementById('menu-btn').onclick = dataMenu;
+
+  window.addEventListener('hashchange', render);
+  if (!location.hash) location.hash = '#/login';
+  render();
+
+  // offline support, only when the file is served over http(s)
+  if ('serviceWorker' in navigator && location.protocol.startsWith('http')) {
+    navigator.serviceWorker.register('sw.js').catch(() => { /* single-file use: no sw.js, that is fine */ });
+  }
+
+  // warn before losing unexported work
+  window.addEventListener('beforeunload', e => {
+    const d = State.data;
+    const n = d.assets.length + d.inspections.length + d.feedback.length;
+    if (n > 0 && !d.meta.lastExport) { e.preventDefault(); e.returnValue = ''; }
+  });
+}
+document.addEventListener('DOMContentLoaded', boot);
+
+
+window.loadDemo = loadDemo; window.askReset = askReset;
+window.exportJSON = exportJSON; window.exportCSV = exportCSV;
+window.dashClear = dashClear; window.render = render;
+
+})();
+</script>
+<script>
+(function(){
+  function tick(){
+    var d=new Date(), p=function(n){return String(n).padStart(2,'0')};
+    var c=document.getElementById('clock'); if(c) c.textContent=p(d.getHours())+':'+p(d.getMinutes());
+  }
+  tick(); setInterval(tick,20000);
+  function net(){
+    var e=document.getElementById('netstate'); if(!e) return;
+    e.textContent = navigator.onLine ? '▮ Online' : '▲ Offline — records are kept on this phone';
+  }
+  net(); window.addEventListener('online',net); window.addEventListener('offline',net);
+})();
+</script>
+</body>
+</html>
