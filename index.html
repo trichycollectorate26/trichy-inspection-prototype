@@ -289,6 +289,19 @@ footer.note{margin-top:14px;font-size:11px;color:var(--muted);text-align:center;
 .vrow input{width:17px;height:17px;flex:none}
 .vrow .tiny{margin-top:0;white-space:nowrap}
 
+/* ---------- front-door passcode ---------- */
+.gate{position:fixed;inset:0;background:var(--plane);z-index:200;display:flex;
+  align-items:center;justify-content:center;padding:22px}
+.gatebox{background:var(--surface);border:1px solid var(--grid);border-radius:16px;
+  padding:26px 22px;max-width:380px;width:100%;text-align:center}
+.gatebox .logo{width:56px;height:56px;border-radius:16px;background:var(--navy);margin:0 auto 12px;
+  display:flex;align-items:center;justify-content:center;color:#fff;font-size:23px}
+.gatebox h2{margin:0;font-size:16px}
+.gatebox p{margin:3px 0 16px;color:var(--ink-2);font-size:12.5px}
+.gatebox .f{text-align:center}
+.gate-note{font-size:11px;color:var(--muted);margin-top:10px;line-height:1.5}
+#gate-err{color:var(--critical);font-weight:700}
+
 </style>
 </head>
 <body>
@@ -577,9 +590,20 @@ const TRIAL = {
   formUrl: '',
 
   /* Courtesy lock on the "See all feedback received" screen so that a tester
-     cannot browse what others have said. This is a latch, not a lock — anyone
-     can read the page source. Leave blank for no passcode. */
-  reviewPasscode: ''
+     cannot browse what others have said. Leave blank for no passcode. */
+  reviewPasscode: '',
+
+  /* Passcode asked for before the app opens at all. Keeps the link from being
+     opened by someone it was not meant for.
+
+     READ THIS BEFORE RELYING ON IT. A passcode checked in the page itself
+     cannot hide the page. The browser has to download all the code to run it,
+     so anyone who opens the developer tools can read this file, see the
+     passcode, and skip the screen. It stops a person who should not be looking;
+     it does not stop a person who is determined to look. For real protection,
+     put the site behind Cloudflare Access — see docs/ACCESS-CONTROL.md.
+     Leave blank for no passcode. */
+  appPasscode: ''
 };
 
 /* ---------- interface strings ---------- */
@@ -3187,8 +3211,49 @@ function shareConsolidated() {
   shareText(compileConsolidated());
 }
 
+/* ---------------- the front-door passcode ---------------- */
+const GATE_KEY = 'trichy-trial-gate';
+function gatePassed() {
+  if (!TRIAL.appPasscode) return true;
+  try { return localStorage.getItem(GATE_KEY) === TRIAL.appPasscode; } catch (e) { return false; }
+}
+function showGate() {
+  document.body.insertAdjacentHTML('beforeend', `
+    <div class="gate" id="gate">
+      <div class="gatebox">
+        <div class="logo">◎</div>
+        <h2>Asset &amp; Inspection — prototype</h2>
+        <p>District Administration, Tiruchirappalli</p>
+        <input class="f" id="gate-pass" type="password" placeholder="Passcode" autocomplete="off">
+        <button class="btn" id="gate-go">Open</button>
+        <div class="gate-note" id="gate-err"></div>
+        <div class="gate-note">This prototype is circulated for a limited trial. If you have reached
+          this page by accident, please close it. If you are a tester and do not have the passcode,
+          ask the nodal officer.</div>
+      </div>
+    </div>`);
+  const go = () => {
+    const v = document.getElementById('gate-pass').value;
+    if (v === TRIAL.appPasscode) {
+      try { localStorage.setItem(GATE_KEY, v); } catch (e) {}
+      document.getElementById('gate').remove();
+      startApp();
+    } else {
+      document.getElementById('gate-err').textContent = 'That passcode is not right.';
+    }
+  };
+  document.getElementById('gate-go').onclick = go;
+  document.getElementById('gate-pass').onkeydown = e => { if (e.key === 'Enter') go(); };
+  document.getElementById('gate-pass').focus();
+}
+
 /* ---------------- boot ---------------- */
 function boot() {
+  if (!gatePassed()) { showGate(); return; }
+  startApp();
+}
+
+function startApp() {
   State.load();
 
   document.getElementById('roles').addEventListener('click', e => {
