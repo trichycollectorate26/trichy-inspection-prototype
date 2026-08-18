@@ -302,6 +302,16 @@ footer.note{margin-top:14px;font-size:11px;color:var(--muted);text-align:center;
 .gate-note{font-size:11px;color:var(--muted);margin-top:10px;line-height:1.5}
 #gate-err{color:var(--critical);font-weight:700}
 
+.whoami{display:inline-flex;flex-direction:column;line-height:1.25;padding:5px 12px;border-radius:10px;
+  background:var(--blue-soft);border:1px solid #bcd7f4;margin-right:4px}
+.whoami b{font-size:12.5px}
+.whoami span{font-size:10.5px;color:var(--ink-2)}
+@media (prefers-color-scheme:dark){.whoami{background:#17283d;border-color:#2b4a70}}
+.logingrid{display:grid;grid-template-columns:auto 1fr;gap:3px 12px;font-size:11.5px;
+  color:var(--ink-2);margin:6px 0 8px;padding:9px 11px;background:var(--surface-2);
+  border:1px solid var(--grid);border-radius:9px}
+.logingrid b{font-family:ui-monospace,Menlo,Consolas,monospace}
+
 </style>
 </head>
 <body>
@@ -319,12 +329,7 @@ footer.note{margin-top:14px;font-size:11px;color:var(--muted);text-align:center;
       <div class="subline">Prototype v0.3 — for trial and feedback. Works offline. Nothing is sent anywhere.</div>
     </div>
     <div style="display:flex;flex-direction:column;gap:7px;align-items:flex-end">
-      <div class="pill-row" id="roles">
-        <button class="pill" data-role="officer" aria-pressed="true">Field Officer</button>
-        <button class="pill" data-role="volunteer">Volunteer</button>
-        <button class="pill" data-role="dept">Maintenance Dept</button>
-        <button class="pill" data-role="collector">Collector Dashboard</button>
-      </div>
+      <div class="pill-row" id="roles"></div>
       <div class="pill-row">
         <button class="pill" id="langbtn">தமிழ்</button>
         <button class="icon-btn" id="menu-btn" title="Trial data">⇅</button>
@@ -546,6 +551,85 @@ function districtTotals() {
   return { blocks: BLOCKS.length, villages: v, habitations: h };
 }
 
+/* ---------- the roster loaded by the Collectorate ----------
+   Who may log in, and what each of them is allotted. In the real system this
+   comes from the administrator; here it is fixed, and the officer cannot
+   change it. Regenerate from Trial_Login_Credentials_and_Allotment.xlsx.
+
+   ROSTER.ob — the block of each of the 100 officers
+   ROSTER.oa — each officer's habitations, as [startIndex, count] runs into the
+               flat habitation list built from HIER in the same order */
+const ROSTER = {"ob":["Andhanallur","Andhanallur","Andhanallur","Andhanallur","Andhanallur","Lalgudi","Lalgudi","Lalgudi","Lalgudi","Manachanallur","Manachanallur","Manachanallur","Manachanallur","Manachanallur","Manachanallur","Manachanallur","Manapparai","Manapparai","Manapparai","Manapparai","Manapparai","Manapparai","Manapparai","Manapparai","Manapparai","Manapparai","Manapparai","Manapparai","Manapparai","Manapparai","Manikandam","Manikandam","Manikandam","Manikandam","Manikandam","Manikandam","Manikandam","Manikandam","Marungapuri","Marungapuri","Marungapuri","Marungapuri","Marungapuri","Marungapuri","Marungapuri","Marungapuri","Marungapuri","Marungapuri","Marungapuri","Marungapuri","Marungapuri","Marungapuri","Marungapuri","Marungapuri","Musiri","Musiri","Musiri","Musiri","Musiri","Musiri","Musiri","Pullampady","Pullampady","Pullampady","Thanthaiyangarpet","Thanthaiyangarpet","Thanthaiyangarpet","Thanthaiyangarpet","Thanthaiyangarpet","Thiruverambur","Thiruverambur","Thiruverambur","Thiruverambur","Thottiam","Thottiam","Thottiam","Thottiam","Thottiam","Thottiam","Thuraiyur","Thuraiyur","Thuraiyur","Thuraiyur","Thuraiyur","Thuraiyur","Thuraiyur","Uppiliyapuram","Uppiliyapuram","Uppiliyapuram","Vaiyampatty","Vaiyampatty","Vaiyampatty","Vaiyampatty","Vaiyampatty","Vaiyampatty","Vaiyampatty","Vaiyampatty","Vaiyampatty","Vaiyampatty","Vaiyampatty"],"oa":[[[0,3],[16,6],[39,5],[81,9]],[[22,3],[44,4],[60,7],[90,9]],[[31,8],[48,4],[59,1],[67,3],[71,6]],[[3,9],[70,1],[77,4],[103,8]],[[12,4],[25,6],[52,7],[99,4],[111,1]],[[119,2],[125,2],[143,1],[145,8],[158,1],[171,1],[174,2],[193,2],[201,2],[208,4]],[[112,7],[131,2],[135,4],[144,1],[159,1],[172,1],[177,5],[195,2],[206,2]],[[121,4],[133,1],[139,3],[153,1],[155,3],[162,1],[164,4],[173,1],[182,5],[197,2]],[[127,4],[134,1],[142,1],[154,1],[160,2],[163,1],[168,3],[176,1],[187,6],[199,2],[203,3]],[[224,18],[294,1],[310,2],[342,1]],[[212,2],[248,2],[320,7],[332,10]],[[221,3],[261,2],[280,14],[343,2]],[[295,2],[298,8],[345,11]],[[214,7],[263,4],[306,2],[312,6],[356,2]],[[256,5],[273,7],[308,2],[327,5],[358,2]],[[242,6],[250,6],[267,6],[297,1],[318,2]],[[489,27]],[[448,26]],[[424,24]],[[379,22]],[[537,22]],[[559,21]],[[401,20]],[[360,19],[421,3]],[[580,6],[634,17]],[[474,7],[516,14]],[[530,7],[620,14]],[[586,13],[612,8]],[[599,8],[660,11]],[[481,8],[607,5],[651,9]],[[734,20]],[[771,15],[830,5]],[[671,14],[758,5],[804,3]],[[685,18],[807,4]],[[768,3],[792,12],[824,6]],[[723,11],[754,4],[811,6]],[[703,8],[719,4],[817,7],[835,2]],[[711,8],[763,5],[786,6]],[[856,5],[1100,3],[1170,16]],[[950,3],[1019,14],[1158,6]],[[1045,3],[1103,14],[1164,6]],[[995,12],[1039,6],[1132,4]],[[947,3],[953,2],[1074,12],[1152,6]],[[874,11],[1014,5],[1033,6]],[[837,10],[1007,7],[1086,5]],[[914,10],[1057,7],[1127,5]],[[890,4],[929,10],[1136,7]],[[861,5],[971,6],[1064,10]],[[885,5],[977,6],[1117,10]],[[847,9],[866,8],[910,4]],[[894,9],[939,8],[955,4]],[[959,12],[1048,9]],[[903,7],[924,5],[1091,9]],[[983,12],[1143,9]],[[1186,2],[1238,11],[1310,10]],[[1210,2],[1259,9],[1270,4],[1302,2],[1320,6]],[[1202,4],[1212,5],[1269,1],[1278,4],[1328,9]],[[1206,4],[1230,8],[1288,4],[1304,6]],[[1191,7],[1224,6],[1249,5],[1298,4]],[[1188,3],[1217,7],[1254,5],[1282,6],[1326,2]],[[1198,4],[1268,1],[1274,4],[1292,6],[1337,7]],[[1349,5],[1359,2],[1365,3],[1375,1],[1378,1],[1381,1],[1389,2],[1395,3],[1404,4]],[[1344,5],[1361,4],[1372,3],[1376,2],[1379,1],[1384,1],[1391,2],[1398,1],[1400,2],[1408,1]],[[1354,5],[1368,4],[1380,1],[1382,2],[1385,4],[1393,2],[1399,1],[1402,2],[1409,1]],[[1426,3],[1432,3],[1473,2],[1506,14]],[[1436,13],[1464,3],[1483,6]],[[1449,13],[1489,9]],[[1410,13],[1435,1],[1475,1],[1498,4],[1503,3]],[[1423,3],[1429,3],[1462,2],[1467,6],[1476,7],[1502,1]],[[1549,8],[1567,1],[1583,10],[1596,3]],[[1523,16],[1543,6]],[[1520,3],[1539,4],[1557,6],[1568,7],[1581,2]],[[1563,4],[1575,6],[1593,3],[1599,9]],[[1676,15],[1710,5],[1743,3]],[[1654,4],[1691,12],[1715,2],[1727,6]],[[1629,1],[1650,4],[1708,2],[1721,6],[1733,10]],[[1608,4],[1641,9],[1670,6],[1717,4]],[[1612,11],[1630,11],[1669,1]],[[1623,6],[1658,11],[1703,5],[1746,1]],[[1861,22]],[[1782,13],[1810,2],[1831,2],[1847,4]],[[1812,2],[1839,8],[1856,2],[1884,9]],[[1754,1],[1814,3],[1823,8],[1833,6],[1858,3]],[[1747,7],[1755,1],[1764,5],[1817,2],[1851,5],[1883,1]],[[1756,2],[1769,7],[1778,4],[1795,5],[1819,2],[1893,1]],[[1758,6],[1776,2],[1800,10],[1821,2],[1894,1]],[[1903,2],[1916,2],[1919,1],[1945,20]],[[1895,4],[1905,6],[1920,14]],[[1899,4],[1911,5],[1918,1],[1934,11],[1965,3]],[[1968,22]],[[2103,22]],[[2058,21]],[[1990,19]],[[2027,2],[2192,18]],[[2029,6],[2041,17]],[[2035,6],[2175,17]],[[2136,25]],[[2009,7],[2161,14]],[[2016,11],[2079,12]],[[2091,12],[2125,11]]]};
+
+const N_OFFICERS = ROSTER.ob.length;
+
+/* the flat habitation list — the index used by ROSTER.oa */
+let _FLATHAB = null;
+function flatHabitations() {
+  if (_FLATHAB) return _FLATHAB;
+  _FLATHAB = [];
+  Object.keys(HIER).sort().forEach(function (b) {
+    Object.keys(HIER[b]).sort().forEach(function (v) {
+      HIER[b][v].forEach(function (h) { _FLATHAB.push({ block: b, vill: v, hab: h }); });
+    });
+  });
+  return _FLATHAB;
+}
+const N_VOLUNTEERS = () => flatHabitations().length;
+
+/* Officer n (1-based) → { block, villages:[{n,habs:[]}] } */
+function officerAllotment(n) {
+  const flat = flatHabitations();
+  const byVill = {};
+  (ROSTER.oa[n - 1] || []).forEach(function (run) {
+    for (let i = run[0]; i < run[0] + run[1]; i++) {
+      const r = flat[i];
+      (byVill[r.vill] = byVill[r.vill] || []).push(r.hab);
+    }
+  });
+  return {
+    block: ROSTER.ob[n - 1],
+    villages: Object.keys(byVill).sort().map(function (v) { return { n: v, habs: byVill[v] }; })
+  };
+}
+
+/* Volunteer n (1-based) → the one habitation they may report for */
+function volunteerPosting(n) { return flatHabitations()[n - 1] || null; }
+
+/* ---------- who may log in ----------
+   Trial credentials: the password is the same as the login ID.
+   Officer1..Officer100 · Volunteer1..Volunteer2210 · Dept1..Dept11 ·
+   Collector1 · Admin1 */
+function checkLogin(id, pass) {
+  const u = String(id || '').trim();
+  const p = String(pass || '').trim();
+  if (!u || !p) return { ok: false, why: 'Enter both the login ID and the password.' };
+  if (u.toLowerCase() !== p.toLowerCase()) return { ok: false, why: 'The password does not match the login ID.' };
+
+  let m = /^officer(\d+)$/i.exec(u);
+  if (m) {
+    const n = +m[1];
+    if (n < 1 || n > N_OFFICERS) return { ok: false, why: `There is no Officer${n}. The trial has Officer1 to Officer${N_OFFICERS}.` };
+    return { ok: true, role: 'officer', n: n, id: 'Officer' + n };
+  }
+  m = /^volunteer(\d+)$/i.exec(u);
+  if (m) {
+    const n = +m[1], max = N_VOLUNTEERS();
+    if (n < 1 || n > max) return { ok: false, why: `There is no Volunteer${n}. The trial has Volunteer1 to Volunteer${max}.` };
+    return { ok: true, role: 'volunteer', n: n, id: 'Volunteer' + n };
+  }
+  m = /^dept(\d+)$/i.exec(u);
+  if (m) {
+    const n = +m[1];
+    if (n < 1 || n > DEPARTMENTS.length) return { ok: false, why: `There is no Dept${n}. The trial has Dept1 to Dept${DEPARTMENTS.length}.` };
+    return { ok: true, role: 'dept', n: n, id: 'Dept' + n, dept: DEPARTMENTS[n - 1] };
+  }
+  if (/^collector1$/i.test(u)) return { ok: true, role: 'collector', n: 1, id: 'Collector1' };
+  if (/^admin1$/i.test(u))     return { ok: true, role: 'admin', n: 1, id: 'Admin1' };
+
+  return { ok: false, why: 'That login ID is not on the roster issued by the Collectorate.' };
+}
+
 /* A sample allotment, for anyone who only wants to look around. */
 const SAMPLE_BLOCK = 'Manachanallur';
 
@@ -703,7 +787,7 @@ const Photos = {
 
 /* ---------------- state ---------------- */
 const EMPTY = {
-  profile: { name: '', mobile: '', desig: '', role: 'officer', dept: 'Village Panchayat', hab: '' },
+  profile: { loginId: '', role: '', n: 0, name: '', mobile: '', dept: '', hab: '' },
   allotment: { block: '', villages: [] },
   settings: { lang: 'en', fence: SETTINGS.fenceMetres },
   assets: [], inspections: [], grievances: [], nilReturns: [], feedback: [], imported: [],
@@ -722,7 +806,9 @@ const State = {
     if (!this.data.meta.started) this.data.meta.started = new Date().toISOString();
     return this.data;
   },
+  quiet: false,          // suppress writes during bulk generation
   save() {
+    if (this.quiet) return;
     try { localStorage.setItem(KEY, JSON.stringify(this.data)); }
     catch (e) {
       alert('The device is out of storage space for this trial. Export your data and then reset.');
@@ -820,17 +906,57 @@ const State = {
     return { state: inspected ? 'done' : 'pend', assets: n };
   },
   coverage() {
+    /* an officer is measured against their own allotment; the Collector and the
+       nodal officer hold none, so they are measured against the whole district */
+    const scope = HABS().length ? HABS() : flatHabitations();
     let enumerated = 0, inspected = 0;
-    HABS().forEach(({ hab }) => {
+    scope.forEach(({ hab }) => {
       const s = this.habStatus(hab);
       if (s.state === 'done' || s.state === 'pend' || s.state === 'nil') enumerated++;
       if (s.state === 'done' || s.state === 'nil') inspected++;
     });
-    return { total: HABS().length, enumerated, inspected };
+    return { total: scope.length, enumerated, inspected };
   }
 };
 
-/* ---------------- the officer's own allotment ---------------- */
+/* ---------------- signing in and out ---------------- */
+function signIn(res) {
+  const p = State.data.profile;
+  p.loginId = res.id; p.role = res.role; p.n = res.n;
+  p.name = res.id;
+  if (res.role === 'officer') {
+    const a = officerAllotment(res.n);
+    State.data.allotment = { block: a.block, villages: a.villages };
+  } else if (res.role === 'volunteer') {
+    const v = volunteerPosting(res.n);
+    if (v) {
+      State.data.allotment = { block: v.block, villages: [{ n: v.vill, habs: [v.hab] }] };
+      p.hab = v.hab;
+    }
+  } else if (res.role === 'dept') {
+    p.dept = res.dept;
+    State.data.allotment = { block: '', villages: [] };
+  } else {
+    State.data.allotment = { block: '', villages: [] };
+  }
+  State.save();
+  return p;
+}
+function signOut() {
+  State.data.profile = { loginId: '', role: '', n: 0, name: '', mobile: '', dept: '', hab: '' };
+  State.data.allotment = { block: '', villages: [] };
+  State.save();
+}
+function signedIn() { return !!State.data.profile.loginId; }
+function myRole() { return State.data.profile.role || ''; }
+function canSee(role) {
+  const r = myRole();
+  if (r === 'admin') return true;                 // nodal officer sees everything
+  if (role === 'collector') return r === 'collector';
+  return r === role;
+}
+
+/* ---------------- the officer's allotment, as issued ---------------- */
 function BLK() { return State.data.allotment.block || ''; }
 function VILL() { return State.data.allotment.villages || []; }
 function HABS() {
@@ -1228,7 +1354,7 @@ function VHAB() {
    ============================================================ */
 const login = {
   title: () => t('login'),
-  sub: () => `${BLK()} block, ${'Tiruchirappalli'}`,
+  sub: () => 'Tiruchirappalli',
   chrome: false,
   html: () => `
     <div class="hero">
@@ -1237,165 +1363,80 @@ const login = {
       <p>${L('District Administration, Tiruchirappalli', 'மாவட்ட நிர்வாகம், திருச்சிராப்பள்ளி')}</p>
     </div>
     <div class="card">
-      <div class="alert alert-info">
-        <span>ⓘ</span><span>${L(
-          'This is a trial version. Any name and any six digits will let you in — there is no real login and no server.',
-          'இது ஒரு சோதனை பதிப்பு. எந்த பெயரும் ஆறு இலக்கங்களும் போதும் — உண்மையான உள்நுழைவு இல்லை.')}</span>
+      <div class="alert alert-info"><span>ⓘ</span><span>${L(
+        'Use the login issued by the Collectorate. Your villages and habitations come with it — you cannot choose them yourself, and nor could you in the real system.',
+        'ஆட்சியரகம் வழங்கிய உள்நுழைவைப் பயன்படுத்தவும். உங்கள் கிராமங்கள் அதனுடன் வரும்.')}</span></div>
+
+      <label class="f">${L('Login ID', 'உள்நுழைவு எண்')}</label>
+      <input class="f" id="li-id" autocapitalize="none" autocomplete="off" spellcheck="false"
+        placeholder="${L('Officer1 / Volunteer1 / Collector1', 'Officer1 / Volunteer1 / Collector1')}">
+
+      <label class="f">${L('Password', 'கடவுச்சொல்')}</label>
+      <input class="f" id="li-pw" type="password" autocapitalize="none" autocomplete="off"
+        placeholder="${L('Same as the login ID, for this trial', 'சோதனைக்கு உள்நுழைவு எண்ணே கடவுச்சொல்')}">
+
+      <div id="li-err"></div>
+      <button class="btn" id="li-go">${L('Sign in', 'உள்நுழை')}</button>
+
+      <div class="tiny" style="margin-top:12px">${L('Trial logins', 'சோதனை உள்நுழைவுகள்')}:</div>
+      <div class="logingrid">
+        <span><b>Officer1</b>–Officer${N_OFFICERS}</span><span>${L('field officers', 'கள அலுவலர்')}</span>
+        <span><b>Volunteer1</b>–Volunteer${N_VOLUNTEERS()}</span><span>${L('one per habitation', 'ஒரு குடியிருப்புக்கு ஒருவர்')}</span>
+        <span><b>Dept1</b>–Dept11</span><span>${L('maintenance departments', 'பராமரிப்புத் துறைகள்')}</span>
+        <span><b>Collector1</b></span><span>${L('district dashboard', 'மாவட்ட டாஷ்போர்டு')}</span>
+        <span><b>Admin1</b></span><span>${L('nodal officer', 'நோடல் அலுவலர்')}</span>
       </div>
-      <label class="f">${L('Your name', 'உங்கள் பெயர்')}</label>
-      <input class="f" id="li-name" placeholder="${L('For the trial record', 'சோதனைப் பதிவிற்கு')}">
-      <label class="f">${t('mobile')}</label>
-      <input class="f" id="li-mob" inputmode="numeric" placeholder="9xxxxxxxxx">
-      <label class="f">${t('otp')}</label>
-      <input class="f" id="li-otp" inputmode="numeric" placeholder="${L('Any six digits', 'எந்த ஆறு இலக்கங்களும்')}">
-
-      <label class="f">${L('Your block', 'உங்கள் ஒன்றியம்')} *</label>
-      <select class="f" id="li-block">
-        <option value="">${L('— choose —', '— தேர்வு —')}</option>
-        ${BLOCKS.map(b => `<option>${esc(b)}</option>`).join('')}
-      </select>
-      <div class="tiny">${L(
-        'All 14 blocks, 404 village panchayats and 2,210 habitations are loaded from the district habitation-wise report. If a name is wrong or missing, please say so in the feedback.',
-        'மாவட்ட அறிக்கையிலிருந்து 14 ஒன்றியங்கள், 404 ஊராட்சிகள், 2,210 குடியிருப்புகள்.')}</div>
-
-      <button class="btn" id="li-go">${t('verify')}</button>
+      <div class="tiny">${L('The password is the same as the login ID. Anything not on the roster is refused.',
+        'கடவுச்சொல் உள்நுழைவு எண்ணே. பட்டியலில் இல்லாதவை மறுக்கப்படும்.')}</div>
     </div>`,
   mount(root) {
-    const p = State.data.profile;
-    root.querySelector('#li-name').value = p.name || '';
-    root.querySelector('#li-mob').value = p.mobile || '';
-    const bsel = root.querySelector('#li-block');
-    if (BLK() && BLOCKS.includes(BLK())) bsel.value = BLK();
-    root.querySelector('#li-go').onclick = () => {
-      const block = bsel.value;
-      if (!block) return toast(L('Please choose your block.', 'உங்கள் ஒன்றியத்தைத் தேர்ந்தெடுக்கவும்.'), 'crit');
-      p.name = root.querySelector('#li-name').value.trim() || 'Trial user';
-      p.mobile = root.querySelector('#li-mob').value.trim();
-      State.data.allotment.block = block;
-      State.save();
-      nav(VILL().length ? '#/home' : '#/allot');
+    const idEl = root.querySelector('#li-id'), pwEl = root.querySelector('#li-pw');
+    const err = root.querySelector('#li-err');
+    const go = () => {
+      const res = checkLogin(idEl.value, pwEl.value);
+      if (!res.ok) {
+        err.innerHTML = `<div class="alert alert-crit"><span>⚠</span><span>${esc(res.why)}</span></div>`;
+        pwEl.value = '';
+        return;
+      }
+      err.innerHTML = '';
+      signIn(res);
+      nav(res.role === 'officer' ? '#/home'
+        : res.role === 'volunteer' ? '#/v/home'
+        : res.role === 'dept' ? '#/d/home' : '#/dashboard');
     };
+    root.querySelector('#li-go').onclick = go;
+    pwEl.onkeydown = e => { if (e.key === 'Enter') go(); };
+    idEl.onkeydown = e => { if (e.key === 'Enter') pwEl.focus(); };
   }
 };
 
 /* ============================================================
-   OFFICER — set up my allotment (villages and habitations)
+   OFFICER — my allotment, as issued (read only)
    ============================================================ */
 const allot = {
   title: () => L('My allotment', 'என் ஒதுக்கீடு'),
-  sub: () => BLK() ? BLK() + ' ' + L('block', 'ஒன்றியம்') : '',
+  sub: () => BLK() + ' ' + L('block', 'ஒன்றியம்'),
   tab: 'home',
   html() {
-    const block = BLK() || BLOCKS[0];
-    const chosen = VILL().map(v => v.n);
-    const master = villagesIn(block);
-    const tot = districtTotals();
-    const myHabs = HABS().length;
+    const vs = VILL(), n = HABS().length;
     return `
       <div class="alert alert-info"><span>ⓘ</span><span>${L(
-        `Loaded from the district's own habitation-wise report — ${tot.blocks} blocks, ${tot.villages} village panchayats, ${tot.habitations.toLocaleString('en-IN')} habitations. In the real system the administrator sets your allotment; here you choose it yourself.`,
-        `மாவட்ட அறிக்கையிலிருந்து — ${tot.blocks} ஒன்றியங்கள், ${tot.villages} ஊராட்சிகள், ${tot.habitations} குடியிருப்புகள்.`)}</span></div>
-
+        'Issued by the Collectorate with your login. An officer cannot add, remove or change villages — the allotment is a district decision, not a field one.',
+        'ஆட்சியரகத்தால் வழங்கப்பட்டது. அலுவலர் மாற்ற இயலாது.')}</span></div>
       <div class="card">
-        <label class="f">${L('Block', 'ஒன்றியம்')}</label>
-        <select class="f" id="al-block">
-          ${BLOCKS.map(b => `<option ${b === block ? 'selected' : ''}>${esc(b)}</option>`).join('')}
-        </select>
-        <div class="tiny">${villagesIn(block).length} ${L('village panchayats in this block', 'ஊராட்சிகள்')}</div>
+        ${dl(L('Login', 'உள்நுழைவு'), State.data.profile.loginId)}
+        ${dl(L('Block', 'ஒன்றியம்'), BLK())}
+        ${dl(L('Village panchayats', 'ஊராட்சிகள்'), vs.length)}
+        ${dl(L('Habitations', 'குடியிருப்புகள்'), n)}
       </div>
-
-      <div class="card">
-        <div class="row">
-          <div class="grow"><div class="t1">${L('My villages', 'என் கிராமங்கள்')}</div>
-            <div class="t2">${chosen.length} ${L('selected', 'தேர்வு')} · ${myHabs} ${L('habitations', 'குடியிருப்புகள்')}</div></div>
-          ${chosen.length ? `<button class="mini-btn" id="al-clear">${L('Clear', 'அழி')}</button>` : ''}
-        </div>
-        <input class="f" id="al-search" placeholder="${L('Search villages in this block', 'கிராமத்தைத் தேடு')}" style="margin-top:9px">
-        <div class="vlist" id="al-list">
-          ${master.map(v => `<label class="vrow ${chosen.includes(v) ? 'on' : ''}" data-v="${esc(v)}">
-            <input type="checkbox" ${chosen.includes(v) ? 'checked' : ''} data-vchk="${esc(v)}">
-            <span class="grow">${esc(v)}</span>
-            <span class="tiny">${habsIn(block, v).length} ${L('hab.', 'குடி.')}</span></label>`).join('')}
-        </div>
-      </div>
-
-      ${chosen.length ? VILL().map(v => `
-        <div class="card">
-          <div class="row"><div class="grow"><div class="t1">${esc(v.n)}</div>
-            <div class="t2">${v.habs.length} ${L('habitations', 'குடியிருப்புகள்')}</div></div>
-            <button class="mini-btn" data-delv="${esc(v.n)}">${L('Remove', 'நீக்கு')}</button></div>
-          ${v.habs.length ? `<div class="habchips">${v.habs.map(h =>
-            `<span class="habchip">${esc(h)}<b data-delh="${esc(v.n)}|${esc(h)}">✕</b></span>`).join('')}</div>` : ''}
-          <div class="btnrow" style="margin-top:8px">
-            <input class="f" data-hin="${esc(v.n)}" placeholder="${L('Add a habitation that is missing', 'விடுபட்ட குடியிருப்பைச் சேர்')}">
-            <button class="btn btn-ghost" data-hadd="${esc(v.n)}" style="margin-top:0;width:auto;padding:11px 16px">＋</button>
-          </div>
-        </div>`).join('') : ''}
-
-      <div class="card">
-        <label class="f">${L('A village not in the list', 'பட்டியலில் இல்லாத கிராமம்')}</label>
-        <div class="btnrow">
-          <input class="f" id="al-v" placeholder="${L('Type the name', 'பெயரைத் தட்டச்சு')}">
-          <button class="btn" id="al-vadd" style="margin-top:0;width:auto;padding:11px 16px">＋</button>
-        </div>
-        <div class="tiny">${L('If a village or habitation is missing from the district list, add it here and please say so in the feedback — correcting that list is one of the aims of this trial.',
-          'விடுபட்டிருந்தால் இங்கே சேர்த்து, கருத்தில் தெரிவிக்கவும்.')}</div>
-      </div>
-
-      ${chosen.length ? `<button class="btn" onclick="location.hash='#/home'">${
-        L('Done — start work', 'முடிந்தது — தொடங்கு')}</button>` : ''}
-      <button class="btn btn-grey" id="al-sample">${L('Or load a sample allotment to look around',
-        'அல்லது மாதிரி ஒதுக்கீட்டை ஏற்று')}</button>`;
-  },
-  mount(root) {
-    const bs = root.querySelector('#al-block');
-    if (bs) bs.onchange = () => {
-      State.data.allotment.block = bs.value;
-      State.data.allotment.villages = [];
-      vlistScroll = 0;
-      State.save(); render();
-    };
-    const vl = root.querySelector('#al-list');
-    if (vl) { vl.scrollTop = vlistScroll; vl.onscroll = () => { vlistScroll = vl.scrollTop; }; }
-    const sr = root.querySelector('#al-search');
-    if (sr) sr.oninput = () => {
-      const q = sr.value.trim().toLowerCase();
-      root.querySelectorAll('.vrow').forEach(r =>
-        r.style.display = !q || r.dataset.v.toLowerCase().includes(q) ? 'flex' : 'none');
-    };
-    root.querySelectorAll('[data-vchk]').forEach(cb => cb.onchange = () => {
-      const v = cb.dataset.vchk;
-      if (cb.checked) addVillageFromMaster(BLK(), v); else removeVillage(v);
-      render();
-    });
-    root.querySelectorAll('.vrow').forEach(r => r.onclick = e => {
-      if (e.target.tagName !== 'INPUT') {
-        const cb = r.querySelector('[data-vchk]');
-        if (cb) { cb.checked = !cb.checked; cb.onchange(); }
-      }
-    });
-    const cl = root.querySelector('#al-clear');
-    if (cl) cl.onclick = () => { State.data.allotment.villages = []; State.save(); render(); };
-    const vadd = root.querySelector('#al-vadd');
-    if (vadd) vadd.onclick = () => {
-      const el = root.querySelector('#al-v');
-      if (addVillage(el.value)) { el.value = ''; render(); }
-      else toast(L('Enter a name that is not already in the list.', 'புதிய பெயரை உள்ளிடவும்.'), 'crit');
-    };
-    root.querySelectorAll('[data-hadd]').forEach(b => b.onclick = () => {
-      const v = b.dataset.hadd, el = root.querySelector(`[data-hin="${v}"]`);
-      if (addHabitation(v, el.value)) { el.value = ''; render(); }
-      else toast(L('Enter a name that is not already in the list.', 'புதிய பெயரை உள்ளிடவும்.'), 'crit');
-    });
-    root.querySelectorAll('[data-delv]').forEach(b => b.onclick = () => { removeVillage(b.dataset.delv); render(); });
-    root.querySelectorAll('[data-delh]').forEach(b => b.onclick = () => {
-      const [v, h] = b.dataset.delh.split('|'); removeHabitation(v, h); render();
-    });
-    const smp = root.querySelector('#al-sample');
-    if (smp) smp.onclick = () => confirmBox(
-      L('Replace your allotment with a sample one? Anything you have recorded is kept.', 'மாதிரி ஒதுக்கீட்டை ஏற்றவா?'),
-      () => { loadSampleAllotment(); toast(L('Sample allotment loaded.', 'ஏற்றப்பட்டது.')); nav('#/home'); },
-      L('Load sample', 'ஏற்று'));
+      ${vs.map(v => `<div class="card">
+        <div class="t1">${esc(v.n)}</div>
+        <div class="t2">${v.habs.length} ${L('habitations', 'குடியிருப்புகள்')}</div>
+        <div class="habchips">${v.habs.map(h => `<span class="habchip">${esc(h)}</span>`).join('')}</div>
+      </div>`).join('')}
+      <div class="tiny center">${L('If this allotment is wrong, it is corrected by the Collectorate, not in the app. Please say so in the feedback.',
+        'ஒதுக்கீடு தவறெனில் ஆட்சியரகம் திருத்தும். கருத்தில் தெரிவிக்கவும்.')}</div>`;
   }
 };
 
@@ -1404,7 +1445,7 @@ const allot = {
    ============================================================ */
 const home = {
   title: () => t('allotment'),
-  sub: () => `${State.data.profile.name || 'Trial user'} — ${BLK()}`,
+  sub: () => `${State.data.profile.loginId} — ${BLK()}`,
   tab: 'home',
   html() {
     const c = State.coverage();
@@ -1435,10 +1476,7 @@ const home = {
       ${toVerify ? `<div class="alert alert-warn"><span>⚠</span><span><b>${toVerify}</b>
         ${L('waiting for your verification.', 'உங்கள் சரிபார்ப்புக்காக காத்திருக்கிறது.')}</span></div>` : ''}
       <h3 class="sec">${t('villages')}
-        <a class="editlink" href="#/allot">${L('edit', 'திருத்து')}</a></h3>
-      ${!VILL().length ? empty('◇', L('Your allotment is not set up yet', 'ஒதுக்கீடு அமைக்கப்படவில்லை'),
-        L('Add the villages and habitations you are responsible for.', 'உங்கள் கிராமங்களைச் சேர்க்கவும்.'),
-        `<button class="btn" onclick="location.hash='#/allot'">${L('Set up my allotment', 'ஒதுக்கீட்டை அமை')}</button>`) : ''}
+        <a class="editlink" href="#/allot">${L('view allotment', 'ஒதுக்கீட்டைப் பார்')}</a></h3>
       ${VILL().map(v => {
         const done = v.habs.filter(h => ['done', 'nil'].includes(State.habStatus(h).state)).length;
         const en = v.habs.filter(h => State.habStatus(h).state !== 'new').length;
@@ -2050,9 +2088,10 @@ const vHome = {
       <div class="card soft">
         <div class="t1">${esc(State.data.profile.name || L('Volunteer', 'தன்னார்வலர்'))}</div>
         <div class="t2">${L('Volunteer', 'தன்னார்வலர்')}, ${esc(habName)}</div>
+   <div class="tiny">${esc((HABS()[0] || {}).vill || '')} · ${esc(BLK())}</div>
         <div class="tiny">${L('Registered by the BDO. You can report only for this habitation.', 'BDO ஆல் பதிவு. இந்த குடியிருப்பு மட்டும்.')}</div>
-        <label class="f">${L('Change habitation (trial only)', 'குடியிருப்பை மாற்று')}</label>
-        <select class="f" id="v-hab">${HABS().map(x => `<option ${x.hab === habName ? 'selected' : ''}>${esc(x.hab)}</option>`).join('')}</select>
+        <div class="tiny">${L('Habitation assigned by the Collectorate. It cannot be changed here.',
+          'ஆட்சியரகத்தால் ஒதுக்கப்பட்டது; மாற்ற இயலாது.')}</div>
       </div>
       <button class="btn" onclick="location.hash='#/v/report'">＋ ${t('report')}</button>
       <h3 class="sec">${L('Public assets in my habitation', 'என் குடியிருப்பின் பொது சொத்துகள்')} (${list.length})</h3>
@@ -2072,11 +2111,6 @@ const vHome = {
         right: sevBadge(g.sev), href: `#/grievance/${g.id}`
       })).join('') : `<div class="card"><div class="t2">${L('Nothing reported yet.', 'இதுவரை புகார் இல்லை.')}</div></div>`}`;
   },
-  mount(root) {
-    root.querySelector('#v-hab').onchange = e => {
-      State.data.profile.hab = e.target.value; State.save(); render();
-    };
-  }
 };
 
 const vReport = {
@@ -2174,8 +2208,9 @@ const dHome = {
     const open = State.data.grievances.filter(g => g.dept === dept && g.status !== 'Closed');
     return `
       <div class="card soft">
-        <label class="f">${L('Acting as department (trial only)', 'துறை தேர்வு')}</label>
-        <select class="f" id="d-dept">${DEPARTMENTS.map(d => `<option ${d === dept ? 'selected' : ''}>${esc(d)}</option>`).join('')}</select>
+        <div class="t1">${esc(dept)}</div>
+        <div class="tiny">${L('Department assigned by your login. It cannot be changed here.',
+          'உங்கள் உள்நுழைவின்படி; மாற்ற இயலாது.')}</div>
       </div>
       <div class="t2 pad">${L('Tap a band to work through it. Bands are ordered by what must be attended first.', 'ஒரு பிரிவைத் தட்டவும்.')}</div>
       <div class="sevgrid">
@@ -2199,11 +2234,6 @@ const dHome = {
         'A grievance wrongly routed here can be sent back for re-tagging within 48 hours of receipt. After that it stays with this department.',
         'தவறாக வந்த குறையை 48 மணி நேரத்திற்குள் திருப்பி அனுப்பலாம்.')}</span></div>`;
   },
-  mount(root) {
-    root.querySelector('#d-dept').onchange = e => {
-      State.data.profile.dept = e.target.value; State.save(); render();
-    };
-  }
 };
 
 const dQueue = {
@@ -2655,12 +2685,22 @@ const TABS = {
   dept: [['dq', '!', () => L('Queue', 'பட்டியல்'), '#/d/home']]
 };
 
-function currentRole() {
-  const h = location.hash;
-  if (h.startsWith('#/v/')) return 'volunteer';
-  if (h.startsWith('#/d/')) return 'dept';
-  if (h.startsWith('#/dashboard')) return 'collector';
-  return 'officer';
+function currentRole() { return myRole() || 'officer'; }
+
+/* which screens each role may reach */
+const ALLOWED = {
+  officer:   [/^#\/(home|allot|village|hab|new|asset|assets|inspect|inspection|inspections|grievances|grievance)/],
+  volunteer: [/^#\/v\//, /^#\/grievance\//],
+  dept:      [/^#\/d\//],
+  collector: [/^#\/dashboard/],
+  admin:     [/^#\//]
+};
+function permitted(hash) {
+  const r = myRole();
+  if (!r) return /^#\/(login)?$/.test(hash) || hash === '' || hash === '#/';
+  if (r === 'admin') return true;
+  if (/^#\/review/.test(hash)) return r === 'admin';
+  return (ALLOWED[r] || []).some(re => re.test(hash));
 }
 
 function screenFor() {
@@ -2671,10 +2711,18 @@ function screenFor() {
 
 /* ---------------- render ---------------- */
 function render() {
+  const hash = location.hash || '#/';
+  if (!signedIn() && !/^#\/(login)?$/.test(hash) && hash !== '#/') { location.hash = '#/login'; return; }
+  if (signedIn() && !permitted(hash)) {
+    const r = myRole();
+    location.hash = r === 'officer' ? '#/home' : r === 'volunteer' ? '#/v/home'
+                  : r === 'dept' ? '#/d/home' : '#/dashboard';
+    toast(L('That screen is not part of your login.', 'அந்த திரை உங்கள் உள்நுழைவில் இல்லை.'), 'crit');
+    return;
+  }
   const S = screenFor();
   const role = currentRole();
-  document.querySelectorAll('#roles .pill').forEach(p =>
-    p.setAttribute('aria-pressed', String(p.dataset.role === role)));
+  paintIdentity();
 
   const wide = S.chrome === 'wide';
   document.getElementById('phonewrap').classList.toggle('hide', wide);
@@ -2711,6 +2759,32 @@ function render() {
 }
 setRender(render);
 
+/* ---------------- who is signed in ---------------- */
+const ROLE_LABEL = { officer: () => L('Field Officer', 'கள அலுவலர்'),
+                     volunteer: () => L('Volunteer', 'தன்னார்வலர்'),
+                     dept: () => L('Maintenance Dept', 'பராமரிப்புத் துறை'),
+                     collector: () => L('Collector', 'ஆட்சியர்'),
+                     admin: () => L('Nodal Officer', 'நோடல் அலுவலர்') };
+function paintIdentity() {
+  const host = document.getElementById('roles');
+  if (!signedIn()) { host.innerHTML = ''; return; }
+  const p = State.data.profile, r = myRole();
+  const extra = r === 'officer' ? BLK()
+              : r === 'volunteer' ? p.hab
+              : r === 'dept' ? p.dept : L('whole district', 'மாவட்டம் முழுவதும்');
+  const views = r === 'admin'
+    ? `<button class="pill" data-goto="#/dashboard">${L('Dashboard', 'டாஷ்போர்டு')}</button>
+       <button class="pill" data-goto="#/review">${L('Feedback', 'கருத்துகள்')}</button>` : '';
+  host.innerHTML = `<span class="whoami"><b>${esc(p.loginId)}</b>
+      <span>${esc(ROLE_LABEL[r] ? ROLE_LABEL[r]() : r)}${extra ? ' · ' + esc(extra) : ''}</span></span>
+    ${views}<button class="pill" id="signout">${L('Sign out', 'வெளியேறு')}</button>`;
+  const so = document.getElementById('signout');
+  if (so) so.onclick = () => confirmBox(
+    L('Sign out? Anything recorded on this phone is kept.', 'வெளியேறவா?'),
+    () => { signOut(); location.hash = '#/login'; render(); }, L('Sign out', 'வெளியேறு'));
+  host.querySelectorAll('[data-goto]').forEach(b => b.onclick = () => { location.hash = b.dataset.goto; });
+}
+
 /* ---------------- data menu (export / reset / demo) ---------------- */
 function dataMenu() {
   const d = State.data;
@@ -2734,11 +2808,12 @@ function dataMenu() {
     </div>
     <button class="btn btn-green" onclick="sendAllFeedback()">
       ➤ ${L('Send all my feedback', 'கருத்துகள் அனைத்தையும் அனுப்பு')} (${d.feedback.length})</button>
-    <hr class="rule">
+    ${myRole() === 'admin' ? `<hr class="rule">
     <button class="btn" onclick="location.hash='#/review'">
-      ☷ ${L('See all feedback received', 'பெறப்பட்ட கருத்துகள்')} (${allFeedback().length})</button>
+      ☷ ${L('See all feedback received', 'பெறப்பட்ட கருத்துகள்')} (${allFeedback().length})</button>` : ''}
     <hr class="rule">
-    <button class="btn btn-grey" onclick="loadDemo()">${L('Load sample data (for a demonstration)', 'மாதிரி தரவை ஏற்று')}</button>
+    ${myRole() === 'admin' || myRole() === 'collector'
+      ? `<button class="btn btn-grey" onclick="loadDemo()">${L('Load sample data (for a demonstration)', 'மாதிரி தரவை ஏற்று')}</button>` : ''}
     <button class="btn btn-grey" onclick="askReset()">${L('Reset to Day 0 — delete everything', 'நாள் 0 க்கு மீட்டமை')}</button>`);
 }
 
@@ -2798,11 +2873,19 @@ function loadDemo() {
     L('Add a set of sample records so the dashboard has something to show? Anything you have already recorded is kept.',
       'மாதிரி பதிவுகளைச் சேர்க்கவா?'),
     () => {
-      if (!VILL().length) loadSampleAllotment();
       _seed = 20260818;
+      /* the Collector and the nodal officer hold no allotment of their own, so a
+         demonstration draws on a spread of habitations across the district */
+      const scope = HABS().length ? HABS() : (function () {
+        const flat = flatHabitations(), step = Math.max(1, Math.floor(flat.length / 90));
+        const out = [];
+        for (let i = 0; i < flat.length; i += step) out.push({ hab: flat[i].hab, vill: flat[i].vill, block: flat[i].block });
+        return out;
+      })();
       const pool = ['ANG', 'SCH', 'CTL', 'OHT', 'STL', 'RD', 'NMC', 'PDS', 'HPM', 'BUS', 'PND', 'CHL', 'LIB', 'PLY', 'REV', 'SHG'];
       let made = 0;
-      HABS().forEach((h, hi) => {
+      State.quiet = true;              // one write at the end, not one per record
+      scope.forEach((h, hi) => {
         if (hi % 7 === 5) return;                       // a few habitations stay un-enumerated
         const n = ri(2, 5);
         for (let i = 0; i < n; i++) {
@@ -2811,7 +2894,7 @@ function loadDemo() {
           const cond = rnd() < 0.3 ? 0 : rnd() < 0.5 ? 1 : rnd() < 0.7 ? 2 : 3;
           const a = State.addAsset({
             type, name: `${T.en} — ${h.hab.replace(' (Main)', '')}`,
-            block: BLK(), vill: h.vill, hab: h.hab,
+            block: h.block || BLK(), vill: h.vill, hab: h.hab,
             own: rnd() < 0.12 ? 'Rented' : 'Government owned',
             occ: T.occ, mnt: T.mnt, functional: rnd() < 0.9 ? 'In use' : 'Partly used',
             loc: { lat: +(10.86 + rnd() * 0.12).toFixed(5), lng: +(78.68 + rnd() * 0.14).toFixed(5), acc: ri(4, 22) },
@@ -2830,7 +2913,7 @@ function loadDemo() {
             bad.slice(0, 3).forEach(b => {
               const sev = b.r === 3 ? (rnd() < 0.4 ? 'VC' : 'CR') : (rnd() < 0.5 ? 'MS' : 'LS');
               const g = State.addGrievance({
-                assetId: a.id, hab: h.hab, vill: h.vill, block: BLK(),
+                assetId: a.id, hab: h.hab, vill: h.vill, block: h.block || BLK(),
                 category: guessCategory(b.p), sev, dept: T.mnt,
                 source: rnd() < 0.28 ? 'Volunteer' : 'Officer inspection',
                 raisedBy: rnd() < 0.28 ? 'Volunteer' : (State.data.profile.name || 'Trial user'),
@@ -2847,6 +2930,7 @@ function loadDemo() {
           }
         }
       });
+      State.quiet = false;
       State.save();
       toast(L(`Sample data added — ${made} assets.`, `மாதிரி தரவு சேர்க்கப்பட்டது — ${made} சொத்துகள்.`));
       render();
@@ -3256,13 +3340,6 @@ function boot() {
 function startApp() {
   State.load();
 
-  document.getElementById('roles').addEventListener('click', e => {
-    const b = e.target.closest('[data-role]'); if (!b) return;
-    const r = b.dataset.role;
-    location.hash = r === 'officer' ? '#/home' : r === 'volunteer' ? '#/v/home'
-                  : r === 'dept' ? '#/d/home' : '#/dashboard';
-  });
-
   document.getElementById('langbtn').onclick = () => {
     State.data.settings.lang = State.data.settings.lang === 'ta' ? 'en' : 'ta';
     State.save();
@@ -3276,7 +3353,7 @@ function startApp() {
   document.getElementById('menu-btn').onclick = dataMenu;
 
   window.addEventListener('hashchange', () => { closeSheet(); render(); });
-  if (!location.hash) location.hash = '#/login';
+  if (!location.hash || !signedIn()) location.hash = '#/login';
   render();
 
   // offline support, only when the file is served over http(s)
