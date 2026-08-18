@@ -273,6 +273,22 @@ td.num{text-align:right;font-weight:700;font-variant-numeric:tabular-nums;white-
 footer.note{margin-top:14px;font-size:11px;color:var(--muted);text-align:center;padding-bottom:70px;line-height:1.5}
 .ta{font-family:var(--tamil)}
 
+.habchips{display:flex;flex-wrap:wrap;gap:5px;margin-top:8px}
+.habchip{background:var(--surface-2);border:1px solid var(--grid);border-radius:999px;
+  padding:4px 9px;font-size:11.5px;display:inline-flex;align-items:center;gap:6px}
+.habchip b{cursor:pointer;color:var(--muted);font-weight:700}
+.habchip b:hover{color:var(--critical)}
+.editlink{float:right;font-size:11px;color:var(--blue);font-weight:700;text-transform:none;letter-spacing:0}
+.btnrow input.f{margin-top:0}
+
+.vlist{max-height:230px;overflow-y:auto;border:1px solid var(--grid);border-radius:9px;margin-top:8px}
+.vrow{display:flex;align-items:center;gap:9px;padding:9px 11px;border-bottom:1px solid var(--grid);
+  font-size:13px;cursor:pointer}
+.vrow:last-child{border-bottom:none}
+.vrow.on{background:var(--blue-soft)}
+.vrow input{width:17px;height:17px;flex:none}
+.vrow .tiny{margin-top:0;white-space:nowrap}
+
 </style>
 </head>
 <body>
@@ -500,15 +516,25 @@ const DEPARTMENTS = [
 const OWNERSHIP = ['Government owned', 'Rented', 'Local body', 'Private premises in use', 'Other'];
 const FUNCTIONAL = ['In use', 'Partly used', 'Unused', 'Abandoned', 'Under construction'];
 
-/* ---------- demo hierarchy (one block) ---------- */
-const BLOCK = 'Manachanallur';
-const VILLAGES = [
-  { n: 'Ma. Puthur',       habs: ['Ma. Puthur (Main)', 'Kottapatti Colony', 'Melapatti', 'Vadakku Thottam', 'Anaikattu Pudur', 'Chinna Ma. Puthur', 'Odai Karai'] },
-  { n: 'Somarasampettai',  habs: ['Somarasampettai (Main)', 'Kizhakku Theru', 'Pallakadu', 'Puthu Nagar', 'Sathamangalam Pudur', 'Karuppur Kadu'] },
-  { n: 'Pichandarkovil',   habs: ['Pichandarkovil (Main)', 'Ayyampatti', 'Vengur', 'Thottiyapatti', 'Mela Colony'] },
-  { n: 'Kallakudi',        habs: ['Kallakudi (Main)', 'Kambarasampettai', 'Nagar Extension', 'Ariyamangalam Pudur'] }
-];
-const ALL_HABS = VILLAGES.flatMap(v => v.habs.map(h => ({ hab: h, vill: v.n })));
+/* ---------- the district's real administrative hierarchy ----------
+   Source: Habitation Wise Report, District Administration, Tiruchirappalli.
+   14 blocks, 404 village panchayats, 2,210 habitations.
+   To update, replace HIER below with a fresh export in the same shape:
+   { "Block": { "Village": ["Habitation", ...] } } */
+const HIER = {"Andhanallur":{"Allur":["Allur","Keela pacheri","Mela pacheri"],"Andhanallur":["Ammankudi","Andhanallur","Dhindukkarai","Elamanur","Maangarai"],"Ettarai":["Ettarai","Natarajapuram","Othakadai","Palayam"],"Kambarasampettai":["Kambarasampettai","Koodalur","Mallachipuram","Periyar nagar"],"Kilikoodu":["Kavutharasanallur","Kilikoodu"],"Kodiyalam":["Ayilapettai","Kodiyalam","Pulivalam","Subburayanpatti"],"Koppu":["Kallukkadu","Koppu","Pattayathar kudiyeruppu"],"Kulumani":["Keela moolangudi","Kulumani","Mariyamman koil theru","Mela kulumani","Samuthiram","Vadakku moolangudi"],"Malliyampathu":["Aalavanthanallur","Amayanallur","Amirtharayanallur","Konar chathiram","Malliyampathu","Perungudi","Ramanathanallur","Sengarcholai"],"Maruthandakuruchi":["Eagirimangalam","Ettumathidal","Maruthandarkurichi","N. sathanur","Seerathoppu"],"Mekkudi":["Chinna karuppur","Kadiyakurichi","Keelpathu","Mekkudi"],"Mullikarumbur":["Manjan koppu","Mullai nagar","Mullikarumbur","Palayam"],"Mutharasanallur":["Kaikkudi","Kamarajapuram","Kanavanoor","Mandabam thoppu","Murungapettai","Muthamilpuram","Mutharasanallur"],"Palur":["Palur"],"Panaiyapuram":["Panaiyapurm","Tiruppalthurai"],"Periyakaruppur":["Adi dravidar colony","Anthoniyarkoil street","Periya karuppur","Sanar palayam","Subaiyapuram"],"Perugamani":["Meenatchipuram","Pazhaiyur","Perugamani"],"Perur":["Perur"],"Pettavaithalai":["Devasthanam","Kamanayakkanpalayam","Keela ariyampatti","Palancauvery","Palayur medu","Pettavaithalai"],"Podhavur":["Podhavur","Singalapuram","Sivantha nagar","Uppukachi theru"],"Posampatti":["Ganesapuram","Keerikalmedu","M.g.r. nagar","Maniyan nagar","Mela kadu","Molakadu","Posampatti","Raja kadu","Viyalanmedu"],"Puliyur":["Kalanchiyam theru","Keela medu","Koyelandi theru","Maraankulam","Mela medu","Puliyur","Puliyur ad street","Therkku medu","Uppukaran kalam"],"Thiruchendurai":["Agraharam","Kudi theru","Pitchavaram","Thiruchendurai"],"Thirupparaithurai":["Ambethkar nagar","Analai","Elamanur","Gandhipuram","Kamaraj nagar","Kovilur","Periyar nagar","Thirupparaithurai"],"Uthamarseeli":["Uthamarseeli"]},"Lalgudi":{"Agalanganallur":["Agalanganallur","Pandaravadai","Puthutheru"],"Alangudi Mahajanam":["Alangudi mahajanam","K.v.pettai","Kollumedu","Kumarapalayam"],"Angarai":["Angarai","Malaiyappapuram"],"Appadurai":["Akilandapuram","Appadurai","Melevaladi","South chatiram"],"Ariyur":["Ariyur","Sengaraiyur"],"Athikudi":["Athikudi","Govindhapuram","Natarajapuram","Valudhiyur"],"Edayathumangalam":["Edayathumangalam","Seshasamuthiram"],"Esanakorai":["Esanakorai"],"Jengamarajapuram":["Jengamarajapuram"],"Keela Perungavur":["Keela perungavur","Maickelpatti","Malavanur","Mela perungavur"],"Keelaanbil":["Keelaanbil","Paruthikal ad street"],"Khookur":["Khookur"],"Komakudi":["Komakudi"],"Konnaikudi":["Konnaikudi"],"Koppavali":["Koppavali"],"Madakudi":["Enjoor","Madakudi","Mavilitheru","Pallividai","Perappankudi","Sathampadi","V.thuraiyur","Vaipur"],"Mahilambadi":["Mahilambadi"],"Manakkal":["Manakkal"],"Mangammalpuram":["Anbil padugai","Mangammalpuram","Venkatachalapuram"],"Mangudi":["Mangudi"],"Maruthur":["Maruthur"],"Mettupatti":["Kurichi","Mettupatti"],"Nagar":["Nagar"],"Natham":["Natham"],"Neikuppai":["Dharmanathapuram","Keelamarimangalam","Muthurajapuram","Neikuppai"],"Nerunjalakudi":["Manthurai","Nerunjalakudi","Pallivayal"],"Pallapuram":["Pallapuram"],"Pambaramsuthi":["Pambaramsuthi"],"Peruvalanallur":["Peruvalanallur"],"Pudukudi":["Pudukudi","Sempalani"],"Pudur Uthamanur":["Pudur uthamanur"],"R. Valavanur":["Narimedu","R.valavanur","Rathinankudi"],"Sathamangalam":["Anandhimedu","Sathamangalam"],"Sembarai":["Sembarai","Vinayagapuram"],"Seventhinathapuram":["Mayilarangam","Periyavarseeli","Seventhinathapuram"],"Sirumaruthur":["Sirumaruthur","Thathanoor"],"Sirumayankudi":["Kattur","Kothamangalam","Pattagacheri","Sirumayankudi"],"T. Kalvikudi":["Mullal","T.kalvikudi"],"T. Valavanur":["T.valavanur","Thandakorai"],"Thalakudi":["Keeramangalam","Thalakudi"],"Thatchankuruchi":["T.mettur","Thatchankuruchi"],"Thinniyam":["Devangudi","Thinniyam"],"Thirumanamedu":["Muthiyur","Pachampettai","Thirumanamedu"],"Thirumangalam":["Panangattankudi","Thirumangalam"],"Valadi":["Kabiriyalpuram","Kamarajapuram","Keezha valadi","Valadi"]},"Manachanallur":{"94. Kariyamanickam":["94.kariyamanickam","Kanniyakudi"],"Alagiyamanavalam":["Alagiyamanavalam","Alinjikarai","Govindapuram","Koburapatti","Palaiyur","Sengudi","Thiruvarangapatti"],"Ayikudi":["Ayikudi","Keela vangaram","Melavangaram"],"Ayyampalayam":["Arayipallam","Ayyampalayam","Baluranpannai","Edaiyaplatti","Harijan street","Karunkadu","Maniyaram kottam","Melur-main road","Nadar pallam","Nallaiyakottam","Nedungulam","Pusari valaivu","Rajampalayam","Salaikadu","Tambai kottam","Thoppukkaranpannai","Vadakkimedu","Vellala theru"],"Edumalai":["Edumalai","Varadarajapuram"],"Inam Samayapuram":["Inam samayapuram","Manickapuram","Othakadai","Pudur poosarikottam"],"Inamkalpalayam":["Eachampatti","Inamkalpalayam"],"Irungalur":["Annanagar","Irungalur","Mettu irungalur","Nadu irungalur","Pudupatti","Purathakudi"],"Kiliyanallur":["Chettimangalam","Kiliyanallur","Neiveli","Silaiyathi","Via thirupancheri"],"Konalai":["Kalpalayam","Konalai"],"Koothur":["Koothur","Palur","Panamangalam","Velvakkudi"],"Kovathakudi":["Govindapuram","Kadukathurai","Kovathakudi","Kurangupettai","Pachoor","Veeranthanallur"],"Madavaperumal Koil":["Kudapalli","Kumarakudi","Madavaperumal koil","Manpidimangalam","Nochiyam","Nochiyam ad.st.","Sri rengarajapuram"],"Melpathu":["Melpathu","Pandiyapuram","Pukkathurai","Siliyathi ad.st.","Sunaipuganallur"],"No. 2 Kariyamanickam":["Kuruvampatti","No. 2 kariyamanickam","Ramagiripatty","Sendamaraikan","Sengudi","Sennakarai","Sirugambur","Solanga nallur","Vaathalay"],"Omandur":["Omandur"],"Palayur":["Palayur","Sriperumpudur"],"Perakambi":["Perakambi"],"Pitchandarkovil":["Pangaiyarselvi","Pitchandarkovil","Therkuppai","Tolgate","Valakattai"],"Poonampalayam":["Poonampalayam","Rajampalayam","Vadakki patti"],"Sanamangalam":["M.r.palayam","Sanamangalam"],"Siruganur":["Chinnammareddipalayam","Siruganur"],"Sirugudi":["Keelapatti","Sirugudi"],"Sirupathoor":["North salapatti","S.mettur","Sirupathoor","Therku sirupathoor","Vadaku sirupathoor","Veerani"],"Sridevimangalam":["Maniyankuruchi","Sridevimangalam"],"Thaludalapatti":["Thaludalapatti","Therku thaludalapatti"],"Thathamangalam":["Akkaraipatti","Devimangalam","Salappatti","Thathamangalam","Vadakku thathamangalam"],"Theerampalayam":["Paraikottam","Pazhaiyur","Sengulipatti","Theerampalayam","Thilampatti"],"Thiruppanjeeli":["Goundampatti keelur","Goundampatty mellor","Ichampatti","Moovarayampalayam keelur","Moovarayampalayam melur","Pachaivel","Thiruppanjeeli","Valmalpalayam keelur","Valmalpalayam melur","Valmalpalyam therku"],"Thiruppattur":["Thiruppattur"],"Thiruvasi":["Thiruvasi","Thudaiyur"],"Thiruvellarai":["Chinna kattu kulam","Hanuman koil","Kalavai patti","Kunna kulam","Manali pallam","Sengudi a.d.st.","South salapatti","Thiruvellarai","Udayavar kulam"],"Valaiyur":["Therku valaiyur","Valaiyur"],"Vazhaiyur":["Kamarajar colony","Vazhaiyur"],"Vengangudi":["Chathiram","Vengangudi"]},"Manapparai":{"Chettiappatti":["Alathur","Anjalkaranpatti","Bambatipatti","Chettiapatti","Kalakavundapatti","Kalathupatti","Kanapadipudur","Kattupatti","Kurumbapatti","Muthalammankovilpatti","Palagalapatti","Pitchaimaniyarampatti","Ponnakonepatty","Sakkliyagoundanpatty","Saveriyarpuram","Sebastiyarpatti","Seethapatti","Thathakalam","Thomas nagar"],"F. Keelaiyur":["Anandhanur","Aria kavundampatti","Chinnamanapatti","F.keelaiyur","Kilavanpatti","Kottaikeezhaiyur","Kudaiyakavundampatti","Kulakaranpatti","Mettukadai","Muthankulam","Nerunjikalapatti","Pannaiyarkalathupatti","Periyakalappatty","Periyamanapatti","Sangipatti","Sooraikalapatti","Thagarakadai","Thoppampatti","Vellakalpatti","Vellalakarupakovilpatti","Viralikattampatti","Virudhakattianpatti"],"K. Periyappatty":["Alagrireddiapatty","Avalkamananyakanpatti","Chellagoundampatti","Chokkampatty","Edayapatti pudur","Edayapatty","Enam chettichatram","K. periyapatti colony","K.periyapatty","Kalarampatty","Kathikaranpatty","Kulavaipatty","Kuppanarpatti","Maravanur","Medukadu","P.seethapatty","Periyapatty puthur","Thanimanickampatti","Therkkuserpatty","Vadakkuserpatty"],"Kalingappatty":["Kalingapatty","Nadupatti","Rajalikavundanpatti"],"Kannudayanpatty":["Anbumedu","Andavarkovil","Besto nagar","Bharathiyar nagar (north and south)","Chatirapatti","K.udaiyapatti","Kallupatti","Kannudayampatty","Kappampatti","Kattupatti","Kumarapatti","Lakshmipuram","Manikkampillai chatiram","Mathampatti","Muthapudaiyanpatti","Nehruji nager","Pachudaiyanpatti","Poosaripatti","Poosaripatty colony","Poovampatti","Sakiliapatti","Sengudi","Thottiapatti","Uppiliapatti"],"Karuppur":["Alagakavundapatti","Ammankovilpatti","Ariyampatti","Eluchipatti","Kadapitchampatti","Kaikattiyur","Karaikulam","Karuppur","Karuthakodangipatti","Kattariyur","Kottaiyanpatti","Manankundram","Mathanur","Muthalaganpatti","Nallaponnampatti","Oothampatti","Ponnusangampatty","S.otthakadai","Saralaipatti","Servaikaranpatti","Sevakattur","Sevakatupudhur","Thammanayakanur","Vadakipatti","Vairakavundanpatti","Villukaranpatti"],"Malayadippatti":["Avarampatty","Karattupatty","Malaithathampatti","Malayadipatti","Mullipadi","Pathimapudur","Thulukkampatti"],"Mondippatty":["Kalathupatty","Mondipatty","Nariyampatty","Pandarathur","Poduvarpatty","Poongudipatty","Sengudi","Vadugapatty"],"Pannappatty":["Allingimettupatti","Amayapuram","Ariyakavandampatty","Aveeikaranpatty","Kalanivasalpatti","Kalingapatty","Kanaroothupatty","Karambaikadu","Karuppa kovilpatti","Kavalkaranpatty","Kavalkaranpatty colony","Keela eachampatty","Kottaikaranpatty","Melaeachampatty","Mettupatty","Moorampatty","Mottperumampatty","Naraperumampatty","Nathampudur","Palakaruthampatti","Palavarapatty","Pannakombu merkukalam","Pannamkombu nerunjikalam","Pannanakombu","Pannankombu keelakalam","Pannankombu paraikalam","Pannankombu vadakkukalam","Pannapatty","Pannnkombu nadukalam","Perumampatty","Pinnathur","Pinnathur keelakalam","Pitchampatty","Plillaiyarkovilpatty","Puthuadaikkampatti","Rajapatti","Samathuvapuram","Thathmalaipatty","Valaiyapatty colony","Valayapatty","Vellayampatty"],"Podanguppatty":["Karurvarathampatty","Kasavanpatti","Kumarasangampatti","Plattigoundampatty","Podangupatty","Pondangupatti vadakkuklam","Thattarapatty"],"Poigaipatty":["Appadipatty","Aveekaranpatty","Kalpalayathanpatty","Keelaeruthigoundampatty","Keelapoigaipatty","Mela eruthigoundampatty","Nalliyampatty","Nambampatty","Poigaipatty","Poigaithirunagar","Ponnapalathanpatty","Poolaooranipatty","Pudupatty","Rayampatty","Rengagoundampatty","Sadapoosaripatty","Sankkiliapatty","Saralaiplatty","Sevakattuppatty","South poigaipatty","Thoppampatty","Vannankulathupatty"],"Puthanatham":["Chinnagoundampatty","Edayapatty","Kambuliampatty","Kanavaipatty","Kottatheru","Kurumalai","Kurumalaipatty","Meyyampatty","North edayapatty","North karunjolaipatty","Ovagoundanpatty","Paraipatty","Pliaamanyakanpatty","Poonaikkapatty","Pungurunipatty","Puthanatham","Puthanatham colony street","Saralairplatty","Servaikaranpatty","Sothkarunjsolaipatty","Vellayagoundarmpatty"],"Sampatty":["Adaikkampatty","Anampatty","Chellagoundampatty","Kettakulam","Sampatty","Thirumalayampatty"],"Samuthiram":["Ambathkar nagar (north street)","Chinnasamudram","Chithakudipatty","Gandhinagar","J.p.nagar","Kamarasar nagar","Kathikkaranpatty","Marulnayakanplatty","Palapatty","Sadayar colony","Samuthiram","Thathayangarpatti","Victor nagar"],"Seegampatty":["Bharathiyar nagar","Ponnusangampatty","Poorthikovil","Poosaripannai","Rayampatty","Seegampatty","Solaipatty","Vadakkipatty"],"Siththanatham":["Kalingapatti","Karayampatti","Karichampatti","Mettupatti","Sithanatham"],"Sooliappatty":["Athampatty","Engumampatty","Kasthuripatty","Kupaanayakkampatty","Melakalam","Melathoppampatty","Padugaikalam","Sooliapatty"],"Thoppampatty":["Alipatty","Bernayakanur","Chinnaudayapatty","Karumbilipatty","Kottapattipudur","Kottapatty","Kuthiraikuthipatty","Manikattiyur","Melapatty","Mettur alipatty","Pambarakodanginayakanur","Pudugalampoosaripatty","Thaselnayakanur","Thoppampatty"],"Usilampatty":["Anjaneyar nagar","Arasankalam","Mill new cplony","Mill old colony","Millgate kudiyiruppu","Mudukkupatty","Nanthanar medu","Nayanmar kulathuppatty","Othaveedu","Pattiyanpatty","Ponmuchanthi","Thavittupatty (s)","Thavittupatty ad colony","Thavittupatty(n)","Thittukattupatty","Usilampatty","Vadakkattanpatty"],"Vadugapatty":["Chinna thathampatty","Kottakaranpatty","Melakottakarnapatty","Nethaji nagar","Rajathiammankovil","Therasanagar","V.pudur","V.thulukkampatty","Vadugapatty"],"Vengaikurichi":["Andigoundampatti","Arunampatti","Edayapattiyampatti","Marachireddiyapattiputhur","Marrachireddiyapatti","Melamanjampatti","Nadukattupatti","Pommampatti","Pungampadi","Vellaipoolampatti","Vengaikuruchi"]},"Manikandam":{"Adavathur":["Adaikankadu","Adavathur","Ayyanarkovil","Koyyathoppu","Kunndayankadu","Madulankollai","Melapettai","Nettachikadu","Nondithirumankadu","Palakadu","Palayam","Sakthinagar","Sunnambukaranpati","Thoppukottikadu"],"Allithurai":["Allithurai","R.s.s.colony","Santhapuram","Saravanapuram","Savariyarpuram"],"Alundur":["Alundur","Chettiyooranuoatti","Iyanthoppu","Kodangipathi","Kottapattu","Kouthanaickanpatti","Pallapathi","Sengulam","Sevalpathi","Sevethiyapatti","Soorakdipathi","Sooralipathi","Yagappudayanpatti"],"Ammapettai":["Ammapettai","Annanagar","Indhira colony","J.j.nagar","Keela ammapettai","Mela ammapettai","Poolangulathupatti","Vadakku ammapettai"],"Ariyavur":["Ariyavur","Kaspa ariyavur","Nehruji nagar","North ariyavur","Othakadai","Somasipatti","South ariyavur","Ukkadai ariyavur"],"Duraikudi":["Duraikudi","Kalathupatti","Kolukattaikudi","Kulavaipatti"],"Inam Kulathur":["Alampattipudur","Chinnalampatti","Inam kulathur","Keelapatti","Melur","Periyalampatti","Rajakattupatti","Samathuvapuram","Sevakkattupatti","Thoppupatti","Vellivadi"],"K.kallikudi":["Aruvakudi","Ayyankadu","Cholan nagar","Deenathayalannagar","Dheeranmanagar","Esanaipatti","Gandhi colony","Haribaskar colony","K.kallikudi","Kalingapathi","Malaipatti","Manikandam","Mattaparaipatti","Muthunagar","Poongudi","Ramjinagar main road","Sandaiyandi nagar","Servothayapuram","Union offfice road","Vadakki medu"],"Kumara Vayalur":["Bharathiyar nagar","Kothattai","Kumara vayalur","Kuruji nagar"],"Mathur":["Kallatheru","Mathur","Naickar theru","Ponnambalampatti","Sannasipatti"],"Mekkudi":["Alampatti","Mekkudi","Mela alampatti","Nadupatti","Senguruchi theru"],"Mudikandam":["Kolarpatti","Mudikandam","Olaiyur"],"N. Kuttapattu":["A.d.kudiyiruppu","Ambethukar nagar","Anbu nagar","Aravangalpatti","Bharathi nagar","Gandhi nagar","Keelakadu","Kuttapathu","Manamedu","Muthukulam","N. kuttapattu","Navalur","Santhosh nagar","Thiru nagar","Vannnkovil"],"Nachikuruchi":["Bommasamuthiram","Dheeran nagar","Iniyanur","Nachikuruchi","Shanmuganagar","Sholanganallur"],"Nagamangalam":["Annanagar","Echakankadu","Gandhi nagar","Karumariyammanagar","Keela nagamangalam","M.g.r nagar","Mela nagamangalam","Nagamangalam","Samiyapillaipatti","Silambudayanpatti","Tamilnadu kudisai matru variyam","Vadakku nagamangalam"],"P.n. Chathiram":["Chathirapatti","J.j.nagar","P.n. chathiram"],"Paganur":["Mela paganur","Paganur","Therku paganur","Vakku paganur"],"Punganur":["Gandhi nagar","Harijana theru","Kalingankadu","Nedumalai","Punganur","Solan nagar"],"Sethurapatti":["Erangudi","Fathima nagar","Kujiliampatti","Kumbakuruchi","Sethurapatti","Sooralipatti","Velapudayanpatti"],"Somarasampettai":["Keela vayalur","Mela pappakuruchi","Somarasampettai","Vadakaputhur","Varaganthidal","Veeranginallur"],"Thayanur":["Keelakadu","Keelapuram","Melakadu","Thayanur","Thayanur sandai"],"Thirumalaisamudram":["Mullipatti","Thirumalaisamudram"]},"Marungapuri":{"A. Pudupatti":["A. pudupatti","Ammapatti","Chinnarakkampatti","Kalkuthampatti","Karaikadu","Maangalapatti","Navakudi","Periyarakkampatti","Servakaranpatti","Vadakadu"],"A.Poruvai":["A. poruvai","Chinnarampatti","Karumalayanpatti","Kurunthangudipatti","Palappatti","Poosari street","Sokkampatti","Solaiyamapatti","Valaiyappatti"],"Adaikkampatti":["Adaikkampatti","Ammapannai","Anna nagar","Arasanampatti","Venkatanaickanpatti"],"Alampatti":["Alampatti","Lekkanayakkanpatti","Maruthamppatti","Sevanthampatti","Thavasipatti"],"Amanakkampatti":["Amanakkampatti","Ariyampatti","Konarpattti","Kottaipatti","Kovilkattupatti","Muthupatti","Thathakavundanpatti","Thathasolapatti"],"Amma Chathiram":["Ambalakaranpatti","Amma chathiram","Chinna maniyamkurichy","Harijannatham","Kadaikonpatti","Maniyangkurichi","Potthapatty","Silambampatti","Valliappankalam","Vannarappatti","Vellakulathupatti"],"Athikaram":["Athikaram","Muthupatti","Sadavelampatti","Soriampatti","Valayapatti"],"D. Pudupatti":["Alangampatti","D.pudupatti","Goundampatti","Malaikattupatti"],"Endapuli":["Alagasthiripatti","Endapuli","Kalathupatti","Kattaiyakilavankalam","Manganapattipudur","North kosipatti","South kosipatti","Thoppanaickanpatti","Vadakkipatti"],"Goundampatti":["Akkulampatti","Athupatti","Goundampatti","Keelapaluvanji","Malugapatti","Puddukudi","Rajapatti"],"Ikkaraikosikuruchi":["Ikkaraikosikuruchi","Malampatti","Seegampatti","Vadakkukalam"],"Kalingapatti":["Kalingapatti","Keelakadu","Keeranipatti","Kulalampatti","Mara kadu","Maravapatty","Melapatti","Rajapatti","Subburayapatti","Vadakadu"],"Kallakkampatti":["Ammappannai","Kallakkampatti","Keelavalpatti","Kondaiyamatti","Melavalpatti"],"Kanjanaickanpatti":["Chettiyappatti","Kanjanaickanpatti","Karumalaiyankulam","Kavalkaranpatti","Malayandi kovil","Muthunaickanpatti","North ellaikattupatti","Rasipatti","Singilipatti","South ellaikattupatti"],"Kannivadugapatti":["Andigoundampatti","Athupatti","Kanni mettupatti","Kanni rajapatti","Kannipatti","Kannivadugapatti","Melrajapatti","Veera kovilpatti"],"Kannukuli":["Kallappatti","Kannukuli","Naduvipatti"],"Kannuthu":["Kallampatti","Kannuthu","Ponnampatti"],"Karadipatti":["Ammappatti","Karadipatti"],"Karaipatti":["Karaipatti","Manjampatti","Vadakattupati","Velakurichy"],"Karumalai":["K.mettupatti","Karumalai","S.mettupatti","Surakkaipatti"],"Kodumbapatti":["Chinnaaurlapatti","Kannakonpannai","Keelakurichipatti","Kodumbapatti","Koviledayanpatti","Palathupatti","Parusampatti","Periyarulapatti"],"M. Edayapatti":["Ekkachimedu","M.edayapatti","Merkku edaiyapatti","Thalavaipatti","Vadagampatti","Veerampatti"],"Maniyankuruchi":["Alampatti","Kadayampatti","Kattlaganpatti","Kottakarai","Maniyankuruchi","Thoppupatti"],"Marungapuri":["Kallupatti","Kulavaipatti","Manivayal","Marungapuri","Paraipatti","Velavuranipatti","Vettukadu"],"Minikkiyur":["Kalarpatti","Mahiliptti","Minikkiyur","Sangigoundampatti","Siruvattupannaikalam"],"Muththalvarpatti":["Kalathuveedu","Mudukkupatti","Muthalvarpatti","Pappa patti","Pudupatti","Purasankadu","Sathambadi","Sethupatti","Suriyampatti","Vadakkaikalam","Veerapuram","West kalam"],"Nallur":["Ayyanarpuram","Chinna marungai","Kallukuttanpatti","Nallur","Paraipatti","Periya murungai","Pillupatty"],"Nattarpatti":["Lakkanaickenpati","Nattarpatti","Palarpatti","Ramaiahpuri","Seegampatti"],"Palakuruchi":["Alampatti","D.peruvai","Kulavaipatti","Kurakuruchipatti","Mettupatti","N.sokkanathapatti","Palakuruchi","Periyalapatti","Pethakonpatti","Rajapatti","S.sokkanathapatti","Saralapatti","Seerangampatti","Vellapatti"],"Palaya Palayam":["Akkiyampatti","Alagapuri","Palaya palayam","Sathirappatti","Thathapatti","Vadugapatti"],"Paluvanji":["Adaikkalampatti","Kallamedu","Kottaipaluvanji","Kuppapatti","Paluvanji","Paluvanji east"],"Pidarappatti":["Chinnankuttu","J.j. nagar","Pidarappatti"],"Pirampatti":["Athupatti.p","Karanipatti","Kurumbapatti","Madhukarampatti","Mettupatti","Pirampatti","Poolampatti","Purasamadaikalam","Valanadu kaikatti"],"Sevalpatti":["Indira nagar","Kavandampatti","Lingampatti","Melur","Semmettupatti","Sevalpatti","Uppuparaikalam"],"T. Edayapatti":["Alampatti","Andiyappatti","Kottaikaranpatti","Mattakurichi","Nellipatti","North kalam","Puduvayalpatti","T.edayapatti","Thoppulanpatti","Velliankudipatti"],"Thalambadi":["Goundampatti","Kalathupatti","Kurumba street","Malligaipatti","Manakkattur","Mukkanpalam","Sangampatti","Sangampatti a.d. colony","Sokkanathapatti","Thalambadi","Yagapuram","Yagapuram a.d. colony"],"Thathanoor":["Katteripatti","Keelakoraipatti","Melakoraipatti","Pudhukalam","Thathanoor"],"Thenur":["Kalathupatti","Kilakkukalam","Medukadu","Murukkapatti","Polampatti","Thenur","Vadakkikalam","Vaiyapurikadu","Varadhakonapatti"],"Thethur":["Malaiyandikovilpatti","South thethur","Thethur"],"Thottiyapatti":["Karunaickanur","Kovilkalam","Malaikolunthanpatti","Mathikonepatti","Medukadupatti","Naickarkalam","Navaluranipatti","Podiakonepatti","Reddiapatti","Sakkiliyauranipatti","Seniapatti","Somanpatti","Thillaichettiyapatti","Thottiyapatti"],"Tirunellipatti":["Alangampatti","Chellampatti","Chinnankonkalathupatti","Chittukuruvinaickanpatti","Karvadi","Kuppanarpatti","Nallamanaickanpatti","Seelnaickanpatti","T.sukkampatti","Tirunellipatti"],"Unaiyur":["Kappakudi","Kavinaripatti","Puthakudi","Unaiyur","Usilampatti"],"Usilampatti":["Ammappatti","Kalathupatti","Manpanjanpatti","Usilampatti"],"Uthukuli":["Avikalapatti","Keelakadu","Manickankadu","Pulavankalapatti","Puthirankadu","Uthukuli","Vanarappatti"],"V. Edayapatti":["Kovilpatti","Kumbakonarkalam","Magaligoundampatti","Palakulam","Panditharkalam","Poosaithoppu","Thillampatti","V.edayapatti","Vadathalipatti"],"Vaguthalvarpatti":["Chinnakonarpatti","Ichadipatti","Pethanaickanpatti","Vaguthalvarpatti","Valassupatti","Vellaiyakonpatti"],"Vairampatti":["Kulunthampatti","Medu kadu","North sokkanathapatti","Thoovankulavaipatti","Thulukkampatti","Vairampatti"],"Valanadu":["Alagapuri","Kodamparai","Somanpatti","Thoppupatti","Vadipatti","Valanadu"],"Vembanur":["Annanagar","Ariyakonpatti","Cylon colony","Kalthondi","Mangalapatti","Maruthupatti","Moovarayapatti","Sangampatti","Sarathapuram","Solagampatti","Thekkudaippu","Ulagankalam","Uthupatti","Vannarappatti","Vellapitchampatti","Vembanur"]},"Musiri":{"Abinimangalam":["Abinimangalam","Mgr nagar"],"Amoor":["Amoor","Karalavali","Manappalayam"],"Ayyampalayam":["Antharapatti","Ayyampalayam","Iveli","Kollukattipalayam","Peramoor","Salapatti","Senthamangudi"],"Evoor":["Evoor","Kaliyapalayam","Karuppampatti","Kottur"],"Gunaseelam":["Gunaseelam","Kallur","Manjakkorai","Vepanthurai"],"Jayankondan":["Jayankondan","Kungumapuram","Melapudhumangalam","Rasipuram"],"Kamatchipatti":["Kamatchipatti","Karuthalampatti"],"Karattampatti":["Ammapalayam chathiram","Karattampatti","Keelamedu","Meenakshipuram","Melur"],"Kattukulam":["Chathirapatti","Chellangarai","Chinnakattukulam","Kattukulam","Periyakattukulam","Udaiyampatti","Vaiyapurikottam"],"Kodunthurai":["Ayyathur","Chinnakodunthurai","Kodunthurai","Manapalayam","Panchampatti","Periyakodunthurai"],"Komangalam":["Ayyankulathupatti","Gandhinagar","Kaveripalayam","Komangalam","Pudhurpatti(north)","Pudhurpatti(south)","Vadakkipatti","Veruppurankottam"],"Kottathur":["Annanagar","Gandhinagar","Indranagar","Keelakunnupatti","Kottathur"],"Manbarai":["Manbarai","Santhanapatti"],"Moovanur":["Keelur","Mamarathukkottam","Moovanur","Thannerpanthal"],"Neiveli":["Kollapatti","Neiveli","Pennampatti","Poosaripatti","Vellapparai"],"Peramangalam":["Kurivikarankulam","Kurvikarakulam-melekottam","Maniyampatti-therkku","P.maniyampatti","Peramangalam"],"Perur":["Edaiyapatti","Kanagaseelampatti","Kathiyampatti","Muthaiyanallur","Otthappatti","Pathaikkottam","Perur","Rakkampatti","Sindampatti"],"Pulivalam":["Pulivalam"],"Puthanampatti":["Puthanampatti"],"Sathanur":["Iluppaiyur","Mettur","Sathanur","Subramaniyapuram"],"Sevanthalingapuram":["Mangaripettai","Sevanthalingapuram","Thottiyapatti","Umaiyalpuram"],"Sithambur":["Mettuveppanthurai","Sithambur","Therku sithambur","Vadaku sithambur"],"Sukkampatti":["Alagaperumalpatti","Palamputhur","Punganvarikottam","Sirucholampatti","Sukkampatti","Thandalai"],"T. Pudupatti":["T.pudupatti","Therku nalliyampatti","Thiruvettriyur","Vadaku nalliyampatti"],"T. Puthur":["Attukkaranpatti","Cinnavelakkanatham","Periyavallkanatham","Ponnangannipatti","T.puthur","Valluvarnagar"],"Thinnakonam":["Melanachampatti","Nachampatti","Thinnakonam","Veeramanipatti"],"Thinnanur":["Seerenganur","Thinnanur"],"Thiruthalaiyur":["Keelakottam","Keelapudhumanglam","Kothurpatti","Melakottam","Thiruthalaiyur","Thiruthalaiyur(therku)"],"Thiruthiyamalai":["Keelapachanampatti","Kollapatti","Kovilkadu","Manaliaythampatti","Melapachanampatti","Mettupatti","Palapatti","Rayapatti","T.ayyampalayam","Thiruthiyamalai"],"Veliyanur":["Kalladipatti","Sellayeepalayam","Ullur","Veliyanur","Veliyanur-keelakottam","Vengatachalapuram"],"Vellakkalpatti":["Nallendirapuram","Vellakkalpatti"],"Vellur":["Anaipatti","Mooveli","Pasukkaranpatti","Salapatti","Sanarapalayam","Sellayee kovilmedu","Therku theraniyampatti","Vadaku theraniyampatti","Vellur"],"Vengaimandalam":["Devarpuram","Edatheru","Ganesapuram","Keelakkannukulam","Melakkannukulam","V.maniyampatti","Vengaimandalam"]},"Pullampady":{"Alambadi":["Alambadi","Mettu theru","Thangasalai"],"Alambakkam":["Alambakkam","Thiruvalluvar nagar"],"E. Vellanur":["Anathapuram","E.vellanur","Idangimangalam","Irudayapuram","Ramanadapuram"],"Garudamangalam":["Alundalaipur","Garudamangalam"],"Kallagam":["Bruns nagar","Indra nagar","Kallagam"],"Kanakiliyanallur":["Kanakiliyanallur","Siruvayalur"],"Kannakudi":["Kannakudi","Kulakudi","Kulakudi colony","Melakannakudi"],"Keelarasur":["Amarasur","Keela arasur","Thennarasur"],"Kovandakurichi":["Arokhiyapuram","Kamarajapuram","Kovandakurichi","Vadugarpettai"],"Kumulur":["Kumulur","Mettuthatchankurichi","Valarnathapuram"],"M. Kannanur":["M.kannanur"],"Malvai":["Malvai","Sadurpakkam"],"Melarasur":["Mela arasur"],"Muduvathur":["Muduvathur"],"N. Sangenthi":["N. sangendi"],"Nambukurichi":["Nammbukurichi"],"Neikulam":["Nedungur","Neikulam"],"Ootathur":["Ootathur"],"Orathur":["Orathur","Sathpatti","Siluvaipatti"],"P. K. Agaram":["P. k. agaram"],"P. Sangenthi":["Ayyanarpuram","P. sangendi"],"Peruvalapur":["Peruvalapur","Swaminadapuram"],"Pudurpalayam":["Pudurpalayam","Vandrampalayam"],"Reddymangudi":["Manikandam","Reddymangudi"],"Saradamangalam":["Saradamangalam"],"Sirukalapur":["Sirukalapur"],"Thappai":["Thappai"],"Theranipalayam":["Nallur","Thiranipalayam"],"Thinnakulam":["Thanavalanallur","Thinnakulam"],"Vandalaikudalur":["Vandalai","Vandalaikudalur","Vidudalaipuram"],"Varakuppai":["Varakuppai"],"Venkatachalapuram":["Venkatachalapuram"],"Viragalur":["Viragalur"]},"Thanthaiyangarpet":{"Anjalam":["Anjalam","Chinnakonappampatti","Chinnamellur","Kalparai","Melur","Neeleyampatty","Sekadinatham"],"Araichi":["Amaravathi","Araichi","Pillathurai","Sakkampatti","Thandavampatti","Vadamalaipatti"],"Devanoor":["Devanoor","Devanoorputhur","Salapatti"],"Jambumadai":["Andipatti","Jadamangalam","Jambumadai"],"Karigali":["Karigali","Morupatti","Uthandampatti"],"Karugudi":["Chinnakarugudi","Karugudi","Periyakarugudi"],"Konappampatti":["Konappampatti"],"M. Pudupatti":["Attalappatti","Aytthampatti","Azhahappatti","Cylon colony","Keelappallam","M.pudupatti","Pudupatti","Rasipuram","Seevampatti","Sivilippatti","Soriyapatti","Thiru murugan nagar","Thoppalampatti"],"Mahadevi":["Mahadevi","Mahadevi pudur","Nallappanaikkanpatti","Vayalur","Velampatti"],"Mangalam":["Annanagar","Gandhinagar","Kasthuripatti","Kuvakkaradu","Mangalam","Mangalamputhur","Therkkumedu","Vellalapatti"],"Mavilipatti":["Krishnapuram","Mavilipatti"],"Muthampatti":["Azhingipallam","Mettupatti","Muthampatti"],"Oorakkarai":["Kalingapatti","Kilakkusithiraipuram","Malaiyappa nagar colony","Oorakkarai","Peruganur","Therkukottam"],"Oorudaiyapatti":["Oorudaiyapatti","Salakkadu"],"Paithamparai":["Paithamparai"],"Pillapalayam":["A.k. salakkadu","Amaravathi salai","Iluppur","Lakshmapuram","Muthurajapalayam","Pillapalayam","Thottiyapatti/arikkadu"],"Poolancheri":["Melakottam","Panangadu","Papappatti","Poolancheri"],"Serugudi":["Poomalaipuram","Serugudi"],"Sittilarai":["Sittilarai","Thathampatti"],"Soorampatti":["Kenippallam","Sellipalayam","Soorampatti"],"Thulaiyanatham":["Akilandampatti","Jambunathapuram","Kothurpatti","Thulaiyanatham"],"Thumbalam":["Kalaravali","Perumalpalayam","Solampatti","Thumbalam"],"Valaiyeduppu":["Valaiyeduppu"],"Valasiramani":["Kanjampatti","Valasiramani","Vellalapatti"],"Valavanthi":["Aruvangadu","Ganesapuram","Kalathupatti","Keelapatti","Komaliyur","Melapatti","Muthampatti","Nadupatti","Pallinatham","Salapatti","Sithiraippatti","Thathampannai","Valavanthi","Vellalapatti"]},"Thiruverambur":{"Arasangudi":["Arasangudi","Mudukkupatti","Thondamanpatti"],"Asoor":["Asoor","Poigaikudi"],"Gundur":["Ayyampatti","Ayyan puthur","Burma colony","Gundoor","Thiruvalarchipatti"],"Kanthalur":["Elanthapatti","Kanthaloor"],"Keela Kuruchi":["Adaikala annai nagar","Anna nagar","Bensi nagar","Keela kuruchi","Mudukkupatti","Nathamadipatti","Thiru nagar"],"Keelamullakudi":["Gandhi puram","Keelamullakudi","Ottakudi","Putthapuram"],"Kiliyur":["Anna nagar","East vilangulam","Kiliyur","Mathakoil street","Rajampettai","West vilangulam"],"Krishnasamuthram":["Belpur","Ganesapuram","Keela kumaresapuram","Krishnasamuthiram","Kumaresapuram","Semmankulam","Thiruvengadanagar","Thondamanpatti"],"Kumbakudi":["Anna nagar","Kumbakkudi","Mgr nagar","Nadupatti","Nps colony","Velayudhankudi"],"Kuvalakudi":["Keelakalamalai","Kuvalakudi","Melakalamalai","Veethivadangam"],"Natarajapuram":["Natarajapuram"],"Navalpattu":["Anna nagar","Burma colony","Ceylon colony","Navalpattu","New street","Police colony","Samathuvapuram"],"Palanganangudi":["Aravakurichipatti","Ex.serviceman colony","Palanganangudi","Poolangudi","Poolangudi kalappu colony","Theneripatti"],"Panaiyakuruchi":["Panaikuruchi","Sarkarpalayam"],"Pathalapettai":["Chettiyarpettai","Keelamangavanam","Kottrapatti","Melamangavanam","Pathalapettai","Putthampur"],"Solamadevi":["Anandha nagar","Peoples nagar","Solamadevi","Solamanagar"],"Suriyur":["Chinna sooriyur","Sooriyur","Veerampatti"],"Thirunedungulam":["Devarayaneri","Solagampatti","Thirunedungulam"],"Valavanthankottai":["Ayyampatti","Burma colony","Kungumapuram","Lurdhunagar","Periyarnagar","Thondamanpatti","Valavanthankottai"],"Vengur":["Keelamurukur","Vengoor"]},"Thottiam":{"Alagarai":["Alagarai","Ariyanampettai","Kallupatti","Kodiyampalayam"],"Appananallur":["Ammankuddi","Appananallur","Pudukulam","Salapatti"],"Arangoor":["Arangoor","Ayinapatti","Kilinjanatham","Krishnapuram","Naduthottam","North arangoor","South arangoor"],"Arasalur":["Arasalur","Kanagambalsamudram","Maniampatti","Sukkampatti","Thirunarayanapuram","Varatharajapuram"],"Chinnapallipalayam":["Chinnapallipalayam"],"Elurpatti":["Aliyapuram","Bharathipuram","Elurpatti","Kundumanipatti","Marachipatti","Poosaripannaiyur","Thalamalaipatti","Udayakulampudur"],"Kaduvetti":["Kaduvetti","Kizhavelikkadu","Melavelikkadu"],"Kamalapuram":["Govindapuram","Kallipatti","Kamalapuram","Kamalapurampudur","Minnathampatti","Puliyampatti","Sanjeevipuram","Thiruvengadapuram","Vengayapatti"],"Kidaram":["Kidaram","Kundangalpalayam","Mellur","Soorampatti"],"Kolakkudi":["Karuppanappatti","Kattur","Kolakkudi","Kolakkudipatti"],"M-kalathur":["M-kalathur","Meikkalnaickanpatti","Servaikaranpatti"],"M. Puthur":["Care colony","Chathiram","Elandamadaipudur","Kizhakaraikadu","M.puthur","Melakaraikadu","Suruttapalayam","Thottiyapatti"],"Manamedu":["Manamedu"],"Mullipadi":["Kattumariammankovil","Mandapam","Mullipadi","Nachiyapudur","Thiruengoaimalai","Thirumalaiyur"],"Murungai":["Aruvankattur","Kannarpatti","Kesariyur","Marampatti","Maruthampatti","Maruthampattipudur","Mettukattur","Murungai","Palanigoundanur","Periyur","Poondipalayam","Pudupalayam","Ramasamygoundanur","Sembagoundanur","Vathagoundanur"],"Nagaiyanallur":["Anaikkalpatti","Kallurpatti","Karattupatti","Karungadu","Kavarapatti","Kongampatti","Kozhisangampatti","Mamarathupatti","Nagaiyanallur","Nanapatti","Periyanachipatti","Thimmanaickenpudur"],"Natham":["Koonrakkampatti","Makalipatti","Moongilthurai","Natham","Venthampatti"],"Periyapallipalayam":["Periyapallipalayam","Sullipalayam"],"Pidaramangalam":["Devarmalai","Kavundanur","Kulathupalayam","Pidaramangalam","Salapatti"],"Seelaipillaiyarputhur":["Devadanam","Seelaipillaiyarputhur"],"Seethapatti":["Balapuram","Ganapathipalayam","Seethapatti","V.s.nagar"],"Srinivasanallur":["Erikulam","Kizhasrinivasanallur","Krishnapuram","Mahendramangalam","Melasrinivasanallur","Srinivasanallur"],"Sriramasamudram":["Alampalayampudur","Ganesapuram","Karukkamadai","Mavilipatti","Sriramasamudram","Vengatanatham"],"Tholurpatti":["Balasamudhiram","Ganesapuram","Kizhakarthigaipatti","Melakarthigaipatti","Muthalipatti","Nochipallam","Sakkilipatti","Samathuvapuram","Tholurpatti","Uppathupallam"],"Unniyur":["Moongilpatti","Nagappamudalipudur","Unniyur"],"Valvelputhur":["Valvelputhur"]},"Thuraiyur":{"Adhanur":["Adanur","Erikulathan kottam","Kattanampatti","Kattukaruppan kottam","Keeripatti","Nalliyampatti","Ponnambalapatti"],"Ammapatty":["Ammapatty"],"Chokkanadhapuram":["Sokkanadapuram"],"Govindhapuram":["Govindapuram","Krishnapuram"],"K. Palayam":["Ayyampalayam","K.palayam","Kiliyanurpatti","Kothurppatti","Meenachipatti","Velayuthampalayam"],"Kalingamudayanpatty":["Kalingamudayanpatty","Maiyampatti melakottam","Meiyampatti","Meiyampatti therkku kottam","Valiyampatti"],"Kannanur":["Chinnaselampatti","Kannanur","Kothampatti","Marukkalampatti","Nalliyampatti","Pethupatti","Vadakku veli samathuvapuram"],"Keerambur":["Keerambur","Kombai pudur"],"Kollapatty":["Kollapatty","Kothampatti","Therku kottam","Vadakku kottam"],"Kombai":["Arikkadu","Arumapatti","Chinnapalamalai","Gundur","Kombai","Marudai","Melur","Moolakadu","Mukthi giramam","Periyapalamalai","Poonachi","Sembulichanpatti","Thalur"],"Kottaiyur":["Karattur","Karuppampatti","Kottaiyur","Pudur","Sangampatti"],"Kunnupatty":["Adivaram","Keelakunnupatti","Keelakunnupatti kottam","Kilakkuvadi","Kunnupatty","Melakunnupatti"],"Madurapuri":["Chithirapatti","Devanga nagar","Madurapuri","Narikuravar colony"],"Maruvathur":["Maruvathur","Thumbampalayam"],"Murugur":["Konapadhai","Murugur"],"Muthayampalayam":["Muthayampalayam","Nalliyampalayam","Puliyampatti"],"Naduvalur":["Mela naduvalur","Naduvalur"],"Nagalapuram":["Ganesapuram","Nagalapuram"],"Narasingapuram":["Manickapuram","Narasingapuram"],"Pagalavadi":["Echampatti","Kaliyamapatti","Nallavandiapatti","Pagalavadi","Pagalavadi a.d. street","Sathiram","Thavittupatti","Visuvampallam"],"Perumalpalayam":["Perumalpalayam","Sirunatham"],"Ponnusangampatty":["Devarampatti","Devarampatti kottam","Kallikudi","Melakothampatti","Ponnusangampatty"],"Sellipalayam":["Sellipalayam"],"Senappanallur":["Mela kottam","S.pudur","Senappanallur"],"Sikkathambur":["Ottampatti","Ottampatti pudur","Servaikaranpatti","Sikkathambur","Sikkathambur palayam"],"Singalandhapuram":["Kalipatti","New housing board","Singalandapuram","Therkkiyur"],"Sorathur":["Mettu sorathur","Perumalmalai adivaram","Sorathur","Sorathur colony","Thanjga nagar"],"T. Renganadhapuram":["Melur","T.renganadapuram"],"V. A. Samuthiram":["Therku kanganipatti","V. a.samuthiram","Vadakku kanganipatti"],"Vannadu":["Chinna iluppur","Kinathur","Kurichi","Manalodai","Nagur","Nesakulam","Palayam","Parathal","Periya iluppur","Pudur","Putthur","Ramanathapuram","Sengathur","Sikkadu","Silaiyur","Thalar","Thanneerpallam","Thenpadi","Thonur","Valaiyur","Vallam","Vannadu"],"Varadharajapuram":["Varadarajapuram"],"Veeramachanpatty":["Ayyampalayam","Kaveripatti","Kemmbiamyapatty","Kurumbapatti","Nagammanayakkanpatti","Thavitupatti","Veeramachan pudur","Veeramachanpatty","Veeramachanpatty a.d.colony"],"Vengadathanur":["Vengadathanur"],"Vengatesapuram":["Vengatesapuram"]},"Uppiliyapuram":{"Alagapuri":["Alagapuri","R.kombai","Salakadu","Velampatti"],"Alathudaiyanpatti":["A. kallankuthu","A.seethakadu","Alathudaiyanpatti","Karuppampatti"],"Ankiyam":["Ankiyam","Koneripatti"],"E.Bhadarpettai":["E.bhadarpettai","Keelapatti","Puduppatti","V.a.samuthiram"],"Erakudi":["Erakudi","Vadakkupatti"],"Kamatchipuram":["Kamatchipuram"],"Koppampatti":["Koppamapuri","Koppampatti","Muthaiyampalayam","Rajapalayam"],"Kottapalayam":["Kottapalayam","Valayapatti"],"Maradi":["Maradi"],"Naganallur":["Naganallur"],"Okkarai":["O.krishnapuram","Okkarai"],"Pachaperumalpatti":["Arapulipatti","Nettavelampatti","P.Kallankuthu","Pachaperumal patti","R.kombai","Sengalpatti","Thanganagar","Vairaperumalpatti"],"Sirunavalur":["Kattapalli","Reddiyapatti","S.n. pudur","Sirunavalur"],"Sobanapuram":["Kanjerimalai","Oduvampattipudur","Osarapalli","Puthur","Sobanapuram"],"Thalugai":["T.mangapatti","T.mangapattipudur","T.murungapatti","T.padarpettai","T.vellalapatti","Thalugai"],"Thenpuranadu":["Boothakkal","Chembur","Kambur","Kanapadi","Karuvankadu","Keelakkarai","Kundakadi","Lakshmanapuram","Nachilipatti","Nachilipattipudur","Periyasithur","Perumparappu","Puthur","Solamathi","Thanneerpallam","Thenpuranadu","Top sengattupatti"],"Vairichettipalayam":["Pasalikombai","S. kombai","Vairichettipalayam"],"Venkatachalapuram":["Gandhipuram","Pudalathi","Venkatachalapuram"]},"Vaiyampatty":{"Amayapuram":["Amayapuram","Ambalakkarapatty","Anaiyur","Chinnakulathupatty","Idayanpatty","Kalathupatty","Kalkothampatti","Kanakkapillaiyur","Karumagoundanpatty","Koodathipatti","Kulathurampatty","Malayandipatty","Muthuppillaiyur","Mylapur","Rettaimalaipatty","Saravanampatty","Sundakkampatty","Thathampatti","Thazhakulathupatti","Thenimalaipatti","Thoppupatty","Vallupatty"],"Aniyappur":["Aniyappur","Arasunilaipalayam","Chettiyapatty","Kachakaranpatty","Kalathupatty","Kathikaranpatty","Kattayampatty","Kovilpatty","Kuppanampatty","Muthiyanantha asramam","Paraikalam","Ramanathapuram","Sandaipettai","Sukkampatty","Thalakulathupatty","Tharakkipatty","Thimmanur","Veeramalaipalayam","Viralipatty"],"Ayanreddiyapatti":["A. reddiyapatty","Athikulathupatty","Elangakurichi","Keelavellakulathupatty","Kombaipatty","Meenachipuram","Vellakulathupatty"],"Elamanam":["Andinaichanoor","Elamanam","Konnappatti","Kulathupatti","Kuppanur","Othavedu","Pattalathanur","Pudur","Rajakodangipatti","Seethapatti","Soogamadaipatti"],"Inamponnambalampatti":["Inamponnambalampatti","Palapatti"],"Inampudur":["Inampudur","Kannimarpalayam","Muthalakoundanur","Vaiyamalaipalayam","Vellaperuchiyur","Vengaitheru"],"Inampuduvadi":["Inampuduvadi","Kumarampatti","Mariyur","Meenachiyur","Pudur","Thangamapatti"],"Kumaravadi":["Anagaraipatti","Annasamuthiram","Challamanayakanur","Edaiyapatti","Kalathupatti","Kesavanampalakaranur","Kumaravadi","Pothanayakanur","Ramalingampatti","S.muthamadaipatti","Sadaiyampatti","Saralapatti","Seelnaickanpatti","Therku ammapatti","Thoppanayakanpatti","Vadaku ammapatti","Valaiyapatti"],"Mugavanur":["Anniyapuram","Ayyampalayam","Chinna anakkaraipatti","Demnalroad","Kadambamarathupatti","Kalathupatti","Katnapatti","Maniyarampatti","Manpathai","Mugavanur","Nallroad","Pampattipatti","Periya anaikkaraipatti","Periyakulathupatti","Pothapatti","Pudumaniyarampatti","Sadainaickanoor","Sakkampatti","Seegampatti","Seethapatti","Villukaranur"],"Nadupatti":["Annanagar","Chetiyur","Chinnagoundampatti","Kalpattichathiram","Karnampatti","Keeranur","Merkukalpatti","Nadupatti","Ramarediapatti","Sakkampatti","Seegampatti","Vathamaniyarampatti"],"Nallampillai":["D.udhaiyapatti","Krishnasamudram","Mangalamedu","Mathakodamgipatti","N.pudur","Nallampillai","Navakinathupatti","Ramagoundampatti","V.poosaripatti","Veerapur","Vellivadi","West vellivadi"],"Palayakottai":["Annanagar","Anukkanatham","Appanampatti","Azathroad","Inam reddiyapatti","Inam reddiyapatti puthu","Kalathuveedukal","Kalkothanur","Malaipatti","Matha nagar","Mettukkalam","Moorampatty","Nagampatty","Notchimedu","Oonthampatti","P.kurumbappatti","Palayakottai","Peachchakkampatty","Purathakudy","Thoppu patti","Uppathupatti","Vellai poolampatty"],"Pudukkottai":["Kallikattupatti","Kalpatichathiram","Karaiyampatti","Kattakkampatti","Mottaiyampatti","Palaya salai","Pommakkanoor","Pudukkottai","Pudur","Seethapatti","Thulukkampatti"],"Sekkanam":["Ichimarathupatti","Kampalathupatti","Kanakkapillipatty","Karungulam","Kosavapatty","Mookkareddiyapatti","Nochimedu","Palamedu","Rayapuram","Sekkanam","Tharmapuram"],"Thavalaveeranpatty":["Chinavellapatty","Karattupatty","Krisnakaundanoor","Modakkur","Mottayakaundanoor","Nadupatty","Patayatharkalam","Periyavellapatty","Ponnakaundanpatty","Thavalaveeranpatty","Thoppur","Veeramalaipatty","Vellapatti","Venkatachalapuram"],"V. Periyapatti":["Athikaripatti","Ayithampatti","Chinnaayithampatti","K.kovilpatti","Kavarapatti","Kottaipoloampatti","Kottukkalampatti","Mathalaipatti","N.poolampatti","Periya ayithampatti","Tharakkipatti","Thoppakavundanur","V.periyapatti","Valanthanagaram"],"Vaiyampatti":["E.kovilpatti","Gandhi nagar","Idaikkattanur","Kidangudi","Latchampatty","Maniyarampatti","Oothupatty","Oothupatty asath road","Othareddiyur","Puliyampatti","T.kovilpatty","Thandalkaranur","Thattarapatti","V.kovilpatty","Vairampatti","Vaiyampatti","Vaiyampatti r.s"],"Vellalapatty":["Alagappa naikan patty","Aranmaniyur","Chettiyapatty","Chinnachettiyapatti","Kannimarpalayam","Karattupatty(a)vadukapatty","Kondamanaickanpatty","Mattaparaipatty(a)m.phothapatti","Moluganur","Pannapatty","Pernaickanpatty","Pitchaireddiyapatty","Rakkampatty","Sadayampatty","Sukkampatty","Thimmanur","Vaiyapuripatty","Vellalapatty"]}};
+
+const BLOCKS = Object.keys(HIER);
+function villagesIn(block) { return HIER[block] ? Object.keys(HIER[block]) : []; }
+function habsIn(block, village) { return (HIER[block] && HIER[block][village]) || []; }
+function districtTotals() {
+  let v = 0, h = 0;
+  BLOCKS.forEach(b => { const vs = HIER[b]; v += Object.keys(vs).length;
+    Object.keys(vs).forEach(x => h += vs[x].length); });
+  return { blocks: BLOCKS.length, villages: v, habitations: h };
+}
+
+/* A sample allotment, for anyone who only wants to look around. */
+const SAMPLE_BLOCK = 'Manachanallur';
 
 /* ---------- roles ---------- */
 const ROLES = [
@@ -535,8 +561,25 @@ const SETTINGS = {
    normal share sheet instead. */
 const TRIAL = {
   nodalName: 'the nodal officer',
-  nodalWhatsApp: '',          // e.g. '919876543210'
-  formUrl: ''                 // optional Google Form link, shown as a second option
+
+  /* WhatsApp number of the nodal officer, country code, no + or spaces.
+     Used by the "Send now" button when no sheet endpoint is configured. */
+  nodalWhatsApp: '',                 // e.g. '919876543210'
+
+  /* Google Sheet collection. Paste the Apps Script web-app URL here and every
+     tester's feedback lands in one private sheet automatically, in a single
+     submission at the end. See docs/GOOGLE-SHEET-SETUP.md. Leave blank and the
+     app falls back to WhatsApp / copy / file. */
+  sheetEndpoint: '',                 // e.g. 'https://script.google.com/macros/s/AKfy.../exec'
+  sheetToken: 'trichy-trial-2026',   // must match the TOKEN in the Apps Script
+
+  /* Optional Google Form, shown as an extra option. */
+  formUrl: '',
+
+  /* Courtesy lock on the "See all feedback received" screen so that a tester
+     cannot browse what others have said. This is a latch, not a lock — anyone
+     can read the page source. Leave blank for no passcode. */
+  reviewPasscode: ''
 };
 
 /* ---------- interface strings ---------- */
@@ -636,7 +679,8 @@ const Photos = {
 
 /* ---------------- state ---------------- */
 const EMPTY = {
-  profile: { name: '', mobile: '', role: 'officer', dept: 'Village Panchayat', hab: 'Melapatti' },
+  profile: { name: '', mobile: '', desig: '', role: 'officer', dept: 'Village Panchayat', hab: '' },
+  allotment: { block: '', villages: [] },
   settings: { lang: 'en', fence: SETTINGS.fenceMetres },
   assets: [], inspections: [], grievances: [], nilReturns: [], feedback: [], imported: [],
   seq: { A: 0, I: 0, G: 0, F: 0 },
@@ -753,14 +797,56 @@ const State = {
   },
   coverage() {
     let enumerated = 0, inspected = 0;
-    ALL_HABS.forEach(({ hab }) => {
+    HABS().forEach(({ hab }) => {
       const s = this.habStatus(hab);
       if (s.state === 'done' || s.state === 'pend' || s.state === 'nil') enumerated++;
       if (s.state === 'done' || s.state === 'nil') inspected++;
     });
-    return { total: ALL_HABS.length, enumerated, inspected };
+    return { total: HABS().length, enumerated, inspected };
   }
 };
+
+/* ---------------- the officer's own allotment ---------------- */
+function BLK() { return State.data.allotment.block || ''; }
+function VILL() { return State.data.allotment.villages || []; }
+function HABS() {
+  return VILL().flatMap(v => (v.habs || []).map(h => ({ hab: h, vill: v.n })));
+}
+function addVillage(name) {
+  name = (name || '').trim(); if (!name) return false;
+  if (VILL().some(v => v.n.toLowerCase() === name.toLowerCase())) return false;
+  State.data.allotment.villages.push({ n: name, habs: [] });
+  State.save(); return true;
+}
+function addHabitation(village, name) {
+  name = (name || '').trim(); if (!name) return false;
+  const v = VILL().find(x => x.n === village); if (!v) return false;
+  if (v.habs.some(h => h.toLowerCase() === name.toLowerCase())) return false;
+  v.habs.push(name); State.save(); return true;
+}
+function removeVillage(name) {
+  State.data.allotment.villages = VILL().filter(v => v.n !== name);
+  State.save();
+}
+function removeHabitation(village, name) {
+  const v = VILL().find(x => x.n === village); if (!v) return;
+  v.habs = v.habs.filter(h => h !== name); State.save();
+}
+function loadSampleAllotment() {
+  const b = SAMPLE_BLOCK;
+  const vs = villagesIn(b).slice(0, 4).map(n => ({ n: n, habs: habsIn(b, n).slice() }));
+  State.data.allotment = { block: b, villages: vs };
+  const first = vs.length && vs[0].habs.length ? vs[0].habs[0] : '';
+  if (!State.data.profile.hab) State.data.profile.hab = first;
+  State.save();
+}
+
+/* Add every habitation of a village from the district master. */
+function addVillageFromMaster(block, village) {
+  if (VILL().some(v => v.n === village)) return false;
+  State.data.allotment.villages.push({ n: village, habs: habsIn(block, village).slice() });
+  State.save(); return true;
+}
 
 function assetCode(a) {
   const v = (a.vill || 'XXX').replace(/[^A-Za-z]/g, '').slice(0, 3).toUpperCase();
@@ -1103,13 +1189,22 @@ function progress(pct) {
 
 const nav = h => { location.hash = h; };
 let draft = {};   // working state for multi-step forms
+let vlistScroll = 0;   // keeps the village picker in place across re-renders
+
+/* the habitation a volunteer is registered for, always one that exists */
+function VHAB() {
+  const h = State.data.profile.hab;
+  const list = HABS();
+  if (h && list.some(x => x.hab === h)) return h;
+  return list.length ? list[0].hab : '';
+}
 
 /* ============================================================
    LOGIN
    ============================================================ */
 const login = {
   title: () => t('login'),
-  sub: () => `${BLOCK} block, ${'Tiruchirappalli'}`,
+  sub: () => `${BLK()} block, ${'Tiruchirappalli'}`,
   chrome: false,
   html: () => `
     <div class="hero">
@@ -1129,18 +1224,154 @@ const login = {
       <input class="f" id="li-mob" inputmode="numeric" placeholder="9xxxxxxxxx">
       <label class="f">${t('otp')}</label>
       <input class="f" id="li-otp" inputmode="numeric" placeholder="${L('Any six digits', 'எந்த ஆறு இலக்கங்களும்')}">
+
+      <label class="f">${L('Your block', 'உங்கள் ஒன்றியம்')} *</label>
+      <select class="f" id="li-block">
+        <option value="">${L('— choose —', '— தேர்வு —')}</option>
+        ${BLOCKS.map(b => `<option>${esc(b)}</option>`).join('')}
+      </select>
+      <div class="tiny">${L(
+        'All 14 blocks, 404 village panchayats and 2,210 habitations are loaded from the district habitation-wise report. If a name is wrong or missing, please say so in the feedback.',
+        'மாவட்ட அறிக்கையிலிருந்து 14 ஒன்றியங்கள், 404 ஊராட்சிகள், 2,210 குடியிருப்புகள்.')}</div>
+
       <button class="btn" id="li-go">${t('verify')}</button>
     </div>`,
   mount(root) {
     const p = State.data.profile;
     root.querySelector('#li-name').value = p.name || '';
     root.querySelector('#li-mob').value = p.mobile || '';
+    const bsel = root.querySelector('#li-block');
+    if (BLK() && BLOCKS.includes(BLK())) bsel.value = BLK();
     root.querySelector('#li-go').onclick = () => {
+      const block = bsel.value;
+      if (!block) return toast(L('Please choose your block.', 'உங்கள் ஒன்றியத்தைத் தேர்ந்தெடுக்கவும்.'), 'crit');
       p.name = root.querySelector('#li-name').value.trim() || 'Trial user';
       p.mobile = root.querySelector('#li-mob').value.trim();
+      State.data.allotment.block = block;
       State.save();
-      nav('#/home');
+      nav(VILL().length ? '#/home' : '#/allot');
     };
+  }
+};
+
+/* ============================================================
+   OFFICER — set up my allotment (villages and habitations)
+   ============================================================ */
+const allot = {
+  title: () => L('My allotment', 'என் ஒதுக்கீடு'),
+  sub: () => BLK() ? BLK() + ' ' + L('block', 'ஒன்றியம்') : '',
+  tab: 'home',
+  html() {
+    const block = BLK() || BLOCKS[0];
+    const chosen = VILL().map(v => v.n);
+    const master = villagesIn(block);
+    const tot = districtTotals();
+    const myHabs = HABS().length;
+    return `
+      <div class="alert alert-info"><span>ⓘ</span><span>${L(
+        `Loaded from the district's own habitation-wise report — ${tot.blocks} blocks, ${tot.villages} village panchayats, ${tot.habitations.toLocaleString('en-IN')} habitations. In the real system the administrator sets your allotment; here you choose it yourself.`,
+        `மாவட்ட அறிக்கையிலிருந்து — ${tot.blocks} ஒன்றியங்கள், ${tot.villages} ஊராட்சிகள், ${tot.habitations} குடியிருப்புகள்.`)}</span></div>
+
+      <div class="card">
+        <label class="f">${L('Block', 'ஒன்றியம்')}</label>
+        <select class="f" id="al-block">
+          ${BLOCKS.map(b => `<option ${b === block ? 'selected' : ''}>${esc(b)}</option>`).join('')}
+        </select>
+        <div class="tiny">${villagesIn(block).length} ${L('village panchayats in this block', 'ஊராட்சிகள்')}</div>
+      </div>
+
+      <div class="card">
+        <div class="row">
+          <div class="grow"><div class="t1">${L('My villages', 'என் கிராமங்கள்')}</div>
+            <div class="t2">${chosen.length} ${L('selected', 'தேர்வு')} · ${myHabs} ${L('habitations', 'குடியிருப்புகள்')}</div></div>
+          ${chosen.length ? `<button class="mini-btn" id="al-clear">${L('Clear', 'அழி')}</button>` : ''}
+        </div>
+        <input class="f" id="al-search" placeholder="${L('Search villages in this block', 'கிராமத்தைத் தேடு')}" style="margin-top:9px">
+        <div class="vlist" id="al-list">
+          ${master.map(v => `<label class="vrow ${chosen.includes(v) ? 'on' : ''}" data-v="${esc(v)}">
+            <input type="checkbox" ${chosen.includes(v) ? 'checked' : ''} data-vchk="${esc(v)}">
+            <span class="grow">${esc(v)}</span>
+            <span class="tiny">${habsIn(block, v).length} ${L('hab.', 'குடி.')}</span></label>`).join('')}
+        </div>
+      </div>
+
+      ${chosen.length ? VILL().map(v => `
+        <div class="card">
+          <div class="row"><div class="grow"><div class="t1">${esc(v.n)}</div>
+            <div class="t2">${v.habs.length} ${L('habitations', 'குடியிருப்புகள்')}</div></div>
+            <button class="mini-btn" data-delv="${esc(v.n)}">${L('Remove', 'நீக்கு')}</button></div>
+          ${v.habs.length ? `<div class="habchips">${v.habs.map(h =>
+            `<span class="habchip">${esc(h)}<b data-delh="${esc(v.n)}|${esc(h)}">✕</b></span>`).join('')}</div>` : ''}
+          <div class="btnrow" style="margin-top:8px">
+            <input class="f" data-hin="${esc(v.n)}" placeholder="${L('Add a habitation that is missing', 'விடுபட்ட குடியிருப்பைச் சேர்')}">
+            <button class="btn btn-ghost" data-hadd="${esc(v.n)}" style="margin-top:0;width:auto;padding:11px 16px">＋</button>
+          </div>
+        </div>`).join('') : ''}
+
+      <div class="card">
+        <label class="f">${L('A village not in the list', 'பட்டியலில் இல்லாத கிராமம்')}</label>
+        <div class="btnrow">
+          <input class="f" id="al-v" placeholder="${L('Type the name', 'பெயரைத் தட்டச்சு')}">
+          <button class="btn" id="al-vadd" style="margin-top:0;width:auto;padding:11px 16px">＋</button>
+        </div>
+        <div class="tiny">${L('If a village or habitation is missing from the district list, add it here and please say so in the feedback — correcting that list is one of the aims of this trial.',
+          'விடுபட்டிருந்தால் இங்கே சேர்த்து, கருத்தில் தெரிவிக்கவும்.')}</div>
+      </div>
+
+      ${chosen.length ? `<button class="btn" onclick="location.hash='#/home'">${
+        L('Done — start work', 'முடிந்தது — தொடங்கு')}</button>` : ''}
+      <button class="btn btn-grey" id="al-sample">${L('Or load a sample allotment to look around',
+        'அல்லது மாதிரி ஒதுக்கீட்டை ஏற்று')}</button>`;
+  },
+  mount(root) {
+    const bs = root.querySelector('#al-block');
+    if (bs) bs.onchange = () => {
+      State.data.allotment.block = bs.value;
+      State.data.allotment.villages = [];
+      vlistScroll = 0;
+      State.save(); render();
+    };
+    const vl = root.querySelector('#al-list');
+    if (vl) { vl.scrollTop = vlistScroll; vl.onscroll = () => { vlistScroll = vl.scrollTop; }; }
+    const sr = root.querySelector('#al-search');
+    if (sr) sr.oninput = () => {
+      const q = sr.value.trim().toLowerCase();
+      root.querySelectorAll('.vrow').forEach(r =>
+        r.style.display = !q || r.dataset.v.toLowerCase().includes(q) ? 'flex' : 'none');
+    };
+    root.querySelectorAll('[data-vchk]').forEach(cb => cb.onchange = () => {
+      const v = cb.dataset.vchk;
+      if (cb.checked) addVillageFromMaster(BLK(), v); else removeVillage(v);
+      render();
+    });
+    root.querySelectorAll('.vrow').forEach(r => r.onclick = e => {
+      if (e.target.tagName !== 'INPUT') {
+        const cb = r.querySelector('[data-vchk]');
+        if (cb) { cb.checked = !cb.checked; cb.onchange(); }
+      }
+    });
+    const cl = root.querySelector('#al-clear');
+    if (cl) cl.onclick = () => { State.data.allotment.villages = []; State.save(); render(); };
+    const vadd = root.querySelector('#al-vadd');
+    if (vadd) vadd.onclick = () => {
+      const el = root.querySelector('#al-v');
+      if (addVillage(el.value)) { el.value = ''; render(); }
+      else toast(L('Enter a name that is not already in the list.', 'புதிய பெயரை உள்ளிடவும்.'), 'crit');
+    };
+    root.querySelectorAll('[data-hadd]').forEach(b => b.onclick = () => {
+      const v = b.dataset.hadd, el = root.querySelector(`[data-hin="${v}"]`);
+      if (addHabitation(v, el.value)) { el.value = ''; render(); }
+      else toast(L('Enter a name that is not already in the list.', 'புதிய பெயரை உள்ளிடவும்.'), 'crit');
+    });
+    root.querySelectorAll('[data-delv]').forEach(b => b.onclick = () => { removeVillage(b.dataset.delv); render(); });
+    root.querySelectorAll('[data-delh]').forEach(b => b.onclick = () => {
+      const [v, h] = b.dataset.delh.split('|'); removeHabitation(v, h); render();
+    });
+    const smp = root.querySelector('#al-sample');
+    if (smp) smp.onclick = () => confirmBox(
+      L('Replace your allotment with a sample one? Anything you have recorded is kept.', 'மாதிரி ஒதுக்கீட்டை ஏற்றவா?'),
+      () => { loadSampleAllotment(); toast(L('Sample allotment loaded.', 'ஏற்றப்பட்டது.')); nav('#/home'); },
+      L('Load sample', 'ஏற்று'));
   }
 };
 
@@ -1149,7 +1380,7 @@ const login = {
    ============================================================ */
 const home = {
   title: () => t('allotment'),
-  sub: () => `${State.data.profile.name || 'Trial user'} — ${BLOCK}`,
+  sub: () => `${State.data.profile.name || 'Trial user'} — ${BLK()}`,
   tab: 'home',
   html() {
     const c = State.coverage();
@@ -1179,8 +1410,12 @@ const home = {
       </div>
       ${toVerify ? `<div class="alert alert-warn"><span>⚠</span><span><b>${toVerify}</b>
         ${L('waiting for your verification.', 'உங்கள் சரிபார்ப்புக்காக காத்திருக்கிறது.')}</span></div>` : ''}
-      <h3 class="sec">${t('villages')}</h3>
-      ${VILLAGES.map(v => {
+      <h3 class="sec">${t('villages')}
+        <a class="editlink" href="#/allot">${L('edit', 'திருத்து')}</a></h3>
+      ${!VILL().length ? empty('◇', L('Your allotment is not set up yet', 'ஒதுக்கீடு அமைக்கப்படவில்லை'),
+        L('Add the villages and habitations you are responsible for.', 'உங்கள் கிராமங்களைச் சேர்க்கவும்.'),
+        `<button class="btn" onclick="location.hash='#/allot'">${L('Set up my allotment', 'ஒதுக்கீட்டை அமை')}</button>`) : ''}
+      ${VILL().map(v => {
         const done = v.habs.filter(h => ['done', 'nil'].includes(State.habStatus(h).state)).length;
         const en = v.habs.filter(h => State.habStatus(h).state !== 'new').length;
         return card({
@@ -1202,7 +1437,7 @@ const village = {
   tab: 'home',
   html() {
     const name = decodeURIComponent(location.hash.split('/')[2]);
-    const v = VILLAGES.find(x => x.n === name);
+    const v = VILL().find(x => x.n === name);
     if (!v) return empty('?', L('Village not found', 'கிராமம் இல்லை'));
     return v.habs.map(h => {
       const s = State.habStatus(h);
@@ -1229,7 +1464,7 @@ const hab = {
   title: () => decodeURIComponent(location.hash.split('/')[2] || ''),
   sub() {
     const h = decodeURIComponent(location.hash.split('/')[2]);
-    const rec = ALL_HABS.find(x => x.hab === h);
+    const rec = HABS().find(x => x.hab === h);
     return rec ? rec.vill + ' VP' : '';
   },
   tab: 'home',
@@ -1265,7 +1500,7 @@ const hab = {
     if (nil) nil.onclick = () => confirmBox(
       L('Record that this habitation has no public asset? A supervisor will see this as a nil return.',
         'இந்த குடியிருப்பில் பொது சொத்து இல்லை எனப் பதிவு செய்யவா?'),
-      () => { State.addNilReturn(h); toast(L('Nil return recorded.', 'பதிவு செய்யப்பட்டது.')); nav(`#/village/${encodeURIComponent(ALL_HABS.find(x => x.hab === h).vill)}`); });
+      () => { State.addNilReturn(h); toast(L('Nil return recorded.', 'பதிவு செய்யப்பட்டது.')); nav(`#/village/${encodeURIComponent(HABS().find(x => x.hab === h).vill)}`); });
   }
 };
 
@@ -1278,7 +1513,7 @@ const newAsset = {
   tab: 'home',
   html() {
     const h = decodeURIComponent(location.hash.split('/')[2]);
-    draft = { hab: h, vill: (ALL_HABS.find(x => x.hab === h) || {}).vill, photos: [], loc: null };
+    draft = { hab: h, vill: (HABS().find(x => x.hab === h) || {}).vill, photos: [], loc: null };
     return `
       <div id="loc-box" class="alert alert-info">
         <span>◉</span><span>${L('Location not captured yet.', 'இருப்பிடம் இன்னும் பதிவாகவில்லை.')}</span>
@@ -1391,7 +1626,7 @@ const newAsset = {
                        `${SETTINGS.minAssetPhotos} படங்கள் தேவை — ${n} எடுக்கப்பட்டது.`), 'crit');
       const a = State.addAsset({
         type: typeSel.value, name: nameIn.value.trim(),
-        block: BLOCK, vill: draft.vill, hab: draft.hab,
+        block: BLK(), vill: draft.vill, hab: draft.hab,
         own: root.querySelector('#a-own').value,
         occ: occSel.value, mnt: mntSel.value,
         functional: root.querySelector('#a-fn').value,
@@ -1784,7 +2019,7 @@ const vHome = {
   sub: () => State.data.profile.hab + ' ' + L('only', 'மட்டும்'),
   tab: 'vhome',
   html() {
-    const habName = State.data.profile.hab;
+    const habName = VHAB();
     const list = State.assetsIn(habName);
     const mine = State.data.grievances.filter(g => g.source === 'Volunteer').reverse();
     return `
@@ -1793,7 +2028,7 @@ const vHome = {
         <div class="t2">${L('Volunteer', 'தன்னார்வலர்')}, ${esc(habName)}</div>
         <div class="tiny">${L('Registered by the BDO. You can report only for this habitation.', 'BDO ஆல் பதிவு. இந்த குடியிருப்பு மட்டும்.')}</div>
         <label class="f">${L('Change habitation (trial only)', 'குடியிருப்பை மாற்று')}</label>
-        <select class="f" id="v-hab">${ALL_HABS.map(x => `<option ${x.hab === habName ? 'selected' : ''}>${esc(x.hab)}</option>`).join('')}</select>
+        <select class="f" id="v-hab">${HABS().map(x => `<option ${x.hab === habName ? 'selected' : ''}>${esc(x.hab)}</option>`).join('')}</select>
       </div>
       <button class="btn" onclick="location.hash='#/v/report'">＋ ${t('report')}</button>
       <h3 class="sec">${L('Public assets in my habitation', 'என் குடியிருப்பின் பொது சொத்துகள்')} (${list.length})</h3>
@@ -1822,10 +2057,10 @@ const vHome = {
 
 const vReport = {
   title: () => t('report'),
-  sub: () => State.data.profile.hab,
+  sub: () => VHAB(),
   tab: 'vhome',
   html() {
-    const habName = State.data.profile.hab;
+    const habName = VHAB();
     const list = State.assetsIn(habName);
     const pre = (location.hash.split('?a=')[1] || '');
     draft = { photo: null, loc: null };
@@ -1885,10 +2120,10 @@ const vReport = {
       if (!draft.photo) return toast(L('A photograph is required.', 'படம் தேவை.'), 'crit');
       const aid = root.querySelector('#v-asset').value;
       const a = aid ? State.asset(aid) : null;
-      const habName = State.data.profile.hab;
-      const rec = ALL_HABS.find(x => x.hab === habName) || {};
+      const habName = VHAB();
+      const rec = HABS().find(x => x.hab === habName) || {};
       State.addGrievance({
-        assetId: aid || null, hab: habName, vill: rec.vill, block: BLOCK,
+        assetId: aid || null, hab: habName, vill: rec.vill, block: BLK(),
         category: root.querySelector('#v-cat').value, sev: 'MS',
         dept: a ? a.mnt : 'Village Panchayat',
         source: 'Volunteer', raisedBy: State.data.profile.name || 'Volunteer',
@@ -2367,6 +2602,7 @@ const ROUTES = [
   [/^#\/?$/,                     () => login],
   [/^#\/login/,                  () => login],
   [/^#\/home/,                   () => home],
+  [/^#\/allot/,                  () => allot],
   [/^#\/village\//,              () => village],
   [/^#\/hab\//,                  () => hab],
   [/^#\/new\//,                  () => newAsset],
@@ -2538,10 +2774,11 @@ function loadDemo() {
     L('Add a set of sample records so the dashboard has something to show? Anything you have already recorded is kept.',
       'மாதிரி பதிவுகளைச் சேர்க்கவா?'),
     () => {
+      if (!VILL().length) loadSampleAllotment();
       _seed = 20260818;
       const pool = ['ANG', 'SCH', 'CTL', 'OHT', 'STL', 'RD', 'NMC', 'PDS', 'HPM', 'BUS', 'PND', 'CHL', 'LIB', 'PLY', 'REV', 'SHG'];
       let made = 0;
-      ALL_HABS.forEach((h, hi) => {
+      HABS().forEach((h, hi) => {
         if (hi % 7 === 5) return;                       // a few habitations stay un-enumerated
         const n = ri(2, 5);
         for (let i = 0; i < n; i++) {
@@ -2550,7 +2787,7 @@ function loadDemo() {
           const cond = rnd() < 0.3 ? 0 : rnd() < 0.5 ? 1 : rnd() < 0.7 ? 2 : 3;
           const a = State.addAsset({
             type, name: `${T.en} — ${h.hab.replace(' (Main)', '')}`,
-            block: BLOCK, vill: h.vill, hab: h.hab,
+            block: BLK(), vill: h.vill, hab: h.hab,
             own: rnd() < 0.12 ? 'Rented' : 'Government owned',
             occ: T.occ, mnt: T.mnt, functional: rnd() < 0.9 ? 'In use' : 'Partly used',
             loc: { lat: +(10.86 + rnd() * 0.12).toFixed(5), lng: +(78.68 + rnd() * 0.14).toFixed(5), acc: ri(4, 22) },
@@ -2569,7 +2806,7 @@ function loadDemo() {
             bad.slice(0, 3).forEach(b => {
               const sev = b.r === 3 ? (rnd() < 0.4 ? 'VC' : 'CR') : (rnd() < 0.5 ? 'MS' : 'LS');
               const g = State.addGrievance({
-                assetId: a.id, hab: h.hab, vill: h.vill, block: BLOCK,
+                assetId: a.id, hab: h.hab, vill: h.vill, block: BLK(),
                 category: guessCategory(b.p), sev, dept: T.mnt,
                 source: rnd() < 0.28 ? 'Volunteer' : 'Officer inspection',
                 raisedBy: rnd() < 0.28 ? 'Volunteer' : (State.data.profile.name || 'Trial user'),
@@ -2591,6 +2828,63 @@ function loadDemo() {
       render();
     },
     L('Add sample data', 'சேர்'));
+}
+
+/* ---------------- sending everything to the district sheet ---------------- */
+async function submitToSheet() {
+  const pending = State.data.feedback.filter(f => !f.sent);
+  if (!pending.length) { toast(L('Everything on this phone has already been submitted.', 'அனைத்தும் ஏற்கனவே அனுப்பப்பட்டுவிட்டன.')); return; }
+  if (!navigator.onLine) { toast(L('No connection. Try again when you have signal — nothing is lost.', 'இணைப்பு இல்லை. சிக்னல் வந்ததும் முயற்சிக்கவும்.'), 'crit'); return; }
+
+  const payload = {
+    token: TRIAL.sheetToken,
+    tester: State.data.profile.name || 'Trial user',
+    mobile: State.data.profile.mobile || '',
+    block: BLK(),
+    device: navigator.userAgent,
+    counts: {
+      assets: State.data.assets.length,
+      inspections: State.data.inspections.length,
+      grievances: State.data.grievances.length
+    },
+    items: pending.map(f => ({ id: f.id, on: f.on, screen: f.screen, verdict: f.verdict, comment: f.comment }))
+  };
+
+  const btn = document.getElementById('s-sheet');
+  if (btn) { btn.disabled = true; btn.textContent = L('Sending…', 'அனுப்புகிறது…'); }
+  let ok = false, confirmed = false;
+  try {
+    // text/plain avoids a CORS preflight, which Apps Script does not answer
+    const r = await fetch(TRIAL.sheetEndpoint, {
+      method: 'POST',
+      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+      body: JSON.stringify(payload)
+    });
+    const j = await r.json();
+    ok = confirmed = !!j.ok;
+    if (!j.ok) console.warn('sheet said', j);
+  } catch (e) {
+    try {
+      await fetch(TRIAL.sheetEndpoint, { method: 'POST', mode: 'no-cors',
+        headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify(payload) });
+      ok = true; confirmed = false;
+    } catch (e2) { ok = false; }
+  }
+
+  if (ok) {
+    pending.forEach(f => { f.sent = true; f.sentOn = new Date().toISOString(); });
+    State.save();
+    closeSheet();
+    toast(confirmed
+      ? L(`Sent. ${pending.length} comment${pending.length === 1 ? '' : 's'} are now in the district sheet.`,
+          `அனுப்பப்பட்டது. ${pending.length} கருத்துகள் மாவட்ட தாளில்.`)
+      : L('Sent. Delivery could not be confirmed from here, so keep the exported file as a backup.',
+          'அனுப்பப்பட்டது. உறுதி செய்ய இயலவில்லை; கோப்பை வைத்திருக்கவும்.'));
+  } else {
+    if (btn) { btn.disabled = false; btn.textContent = '☁ ' + L('Submit to the district sheet', 'மாவட்ட தாளுக்கு அனுப்பு'); }
+    toast(L('Could not reach the sheet. Use Copy all or Save as file instead — nothing is lost.',
+            'தாளை அணுக இயலவில்லை. நகலெடு அல்லது கோப்பாக சேமிக்கவும்.'), 'crit');
+  }
 }
 
 /* ---------------- sending feedback onward ---------------- */
@@ -2623,6 +2917,8 @@ function compileMyFeedback() {
              ' inspections, ' + d.grievances.length + ' grievances');
   lines.push('Comments: ' + fb.length + '  (needs change ' + counts.change +
              ', broke ' + counts.broken + ', works ' + counts.ok + ')');
+  const already = fb.filter(f => f.sent).length;
+  if (already) lines.push('Already submitted to the district sheet: ' + already);
   lines.push('');
   ['broken', 'change', 'ok'].forEach(v => {
     const set = fb.filter(f => f.verdict === v);
@@ -2706,7 +3002,12 @@ function sendAllFeedback() {
       `${fb.length} கருத்துகளும் ஒரே செய்தியாக தொகுக்கப்பட்டுள்ளன.`)}</span></div>
     <label class="f">${L('What will be sent', 'என்ன அனுப்பப்படும்')}</label>
     <textarea class="f" id="fb-all" rows="9" readonly>${esc(text)}</textarea>
-    <button class="btn" id="s-share">➤ ${L('Send now', 'இப்போது அனுப்பு')}</button>
+    ${TRIAL.sheetEndpoint
+      ? `<button class="btn btn-green" id="s-sheet">☁ ${L('Submit to the district sheet', 'மாவட்ட தாளுக்கு அனுப்பு')}</button>
+         <div class="tiny" style="margin:4px 0 8px">${L(
+           'Goes straight into one private sheet that only the nodal officer can open. Other testers cannot see it.',
+           'நோடல் அலுவலர் மட்டுமே பார்க்கக்கூடிய தனிப்பட்ட தாளுக்கு நேரடியாக.')}</div>` : ''}
+    <button class="btn ${TRIAL.sheetEndpoint ? 'btn-ghost' : ''}" id="s-share">➤ ${L('Send now', 'இப்போது அனுப்பு')}</button>
     <div class="btnrow">
       <button class="btn btn-ghost" id="s-copy">${L('Copy all', 'நகலெடு')}</button>
       <button class="btn btn-ghost" id="s-file">${L('Save as file', 'கோப்பாக சேமி')}</button>
@@ -2716,6 +3017,8 @@ function sendAllFeedback() {
     <div class="tiny" style="margin-top:8px">${L(
       'Also send the data file (⇅ → Export everything) so the nodal officer can see what you recorded, not only what you said.',
       'தரவு கோப்பையும் (⇅ → ஏற்றுமதி) அனுப்பவும்.')}</div>`);
+  const sb = body.querySelector('#s-sheet');
+  if (sb) sb.onclick = submitToSheet;
   body.querySelector('#s-share').onclick = () => { shareText(text); };
   body.querySelector('#s-copy').onclick = () => {
     const ta = body.querySelector('#fb-all'); ta.removeAttribute('readonly'); ta.select();
@@ -2730,11 +3033,24 @@ function sendAllFeedback() {
 }
 
 /* ---------------- feedback review ---------------- */
+let reviewUnlocked = false;
 const reviewScreen = {
   title: () => L('Feedback received', 'பெறப்பட்ட கருத்துகள்'),
   sub: () => L('This device, plus any files imported from other testers', 'இந்த சாதனம் மற்றும் இறக்குமதி செய்யப்பட்டவை'),
   chrome: 'wide',
   html() {
+    if (TRIAL.reviewPasscode && !reviewUnlocked) {
+      return `<div class="wideinner"><div class="chartcard" style="max-width:460px;margin:0 auto">
+        <h4>${L('For the nodal officer', 'நோடல் அலுவலருக்கு')}</h4>
+        <div class="cap">${L('This screen shows what every tester has said. It is kept behind a passcode so that testers do not read one another\'s comments.',
+          'சோதனையாளர்கள் ஒருவரையொருவர் கருத்துகளைப் படிக்காமல் இருக்க கடவுக்குறியீடு.')}</div>
+        <input class="f" id="rv-pass" type="password" placeholder="${L('Passcode', 'கடவுக்குறியீடு')}">
+        <button class="btn" id="rv-go">${L('Open', 'திற')}</button>
+        <div class="tiny" style="margin-top:8px">${L(
+          'This is a latch, not a lock. Anyone who can read the page source can bypass it, so nothing confidential should ever be put in this prototype.',
+          'இது ஒரு தாழ்ப்பாள் மட்டுமே, பூட்டு அல்ல.')}</div>
+      </div></div>`;
+    }
     const all = allFeedback();
     const byVerdict = { ok: 0, change: 0, broken: 0 };
     all.forEach(f => { if (byVerdict[f.verdict] !== undefined) byVerdict[f.verdict]++; });
@@ -2834,6 +3150,16 @@ const reviewScreen = {
     </div>`;
   },
   mount(root) {
+    const pg = root.querySelector('#rv-go');
+    if (pg) {
+      const go = () => {
+        if (root.querySelector('#rv-pass').value === TRIAL.reviewPasscode) { reviewUnlocked = true; render(); }
+        else toast(L('That passcode is not right.', 'கடவுக்குறியீடு தவறு.'), 'crit');
+      };
+      pg.onclick = go;
+      root.querySelector('#rv-pass').onkeydown = e => { if (e.key === 'Enter') go(); };
+      return;
+    }
     const inp = root.querySelector('#imp');
     if (!inp) return;
     inp.onchange = async e => {
@@ -2907,7 +3233,7 @@ window.loadDemo = loadDemo; window.askReset = askReset;
 window.exportJSON = exportJSON; window.exportCSV = exportCSV;
 window.dashClear = dashClear; window.render = render;
 window.closeSheet = closeSheet; window.shareText = shareText;
-window.sendAllFeedback = sendAllFeedback;
+window.sendAllFeedback = sendAllFeedback; window.submitToSheet = submitToSheet;
 window.downloadConsolidated = downloadConsolidated; window.shareConsolidated = shareConsolidated;
 
 })();
